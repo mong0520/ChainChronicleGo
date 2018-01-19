@@ -76,7 +76,7 @@ func PostV2(requestUrl string, rawPayload string, body map[string]interface{}, s
         Value: sid,
     }
     req.AddCookie(cookie)
-    logger.Printf("[POST] %s\n", req.URL.String())
+    //logger.Printf("[POST] %s\n", req.URL.String())
     //logger.Printf("Post Data = %s\n", postData)
     resp, err := c.Do(req)
     if err != nil {
@@ -224,6 +224,5 @@ func InArray(val interface{}, array interface{}) (exists bool) {
             }
         }
     }
-
     return
 }
