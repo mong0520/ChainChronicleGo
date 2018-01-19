@@ -9,8 +9,12 @@ import (
 	"github.com/mong0520/ChainChronicleGo/clients/session"
 	"github.com/mong0520/ChainChronicleGo/utils"
 	"github.com/robfig/config"
+	"github.com/oleiade/reflections"
     "strings"
-    "github.com/mong0520/ChainChronicleGo/clients/quest"
+    //"github.com/mong0520/ChainChronicleGo/clients/quest"
+	"github.com/mong0520/ChainChronicleGo/clients/quest"
+	"reflect"
+	"github.com/BurntSushi/toml"
 )
 
 var user = &clients.User{}
@@ -22,6 +26,7 @@ var actionMapping = map[string]interface{}{
 func init() {
 	logger = utils.GetLogger()
 	config, err := config.ReadDefault("conf/mong.conf")
+	configv2, err := toml.
 	if err != nil {
 		logger.Fatalln("Unable to read config, ", err)
 		return
@@ -84,11 +89,21 @@ func start() {
 func doQuest(user *clients.User, section string){
     logger.Println("enter doQuest")
     conf := user.Config
-
+	questInfo := &quest.Quest{}
     // Parse config
-    questRaw, _ := conf.String(section, "QuestId")
+    fields, _ := conf.SectionOptions(section)
+    for _, field := range fields {
+    	value, _ := conf.String(section, field)
+		logger.Printf("Field = %s, value = %v, type = %v\n", field, value, reflect.TypeOf(value))
+		if err := reflections.SetField(questInfo, field, "test") ; err != nil{
+			logger.Println(err)
+		}
+		logger.Println()
 
-    questInfo := &quest.Quest{}
+	}
+	logger.Printf("%v", questInfo)
+
+
 
 
 }

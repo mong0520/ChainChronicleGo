@@ -12,6 +12,8 @@ var API_ENTRY = "quest/entry"
 var API_RESULT = "quest/result"
 
 type Quest struct {
+    QuestType int
+    AutoSell string
     Type int
     Qid int
     Fid int

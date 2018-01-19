@@ -1,8 +1,5 @@
 package: github.com/mong0520/ChainChronicleGo
 import:
-- package: ChainChronicleGo/clients
-  subpackages:
-  - session
-- package: ChainChronicleGo/utils
-- package: github.com/go-ini/ini
-  version: ~1.32.0
+- package: github.com/robfig/config
+- package: github.com/oleiade/reflections
+  version: ~1.0.0
