@@ -13,7 +13,7 @@ import (
     "time"
     "net/url"
     "os"
-
+    "github.com/oleiade/reflections"
     "github.com/robfig/config"
     "reflect"
 )
@@ -76,8 +76,8 @@ func PostV2(requestUrl string, rawPayload string, body map[string]interface{}, s
         Value: sid,
     }
     req.AddCookie(cookie)
-    logger.Printf("Post Host = %s\n", req.URL.String())
-    logger.Printf("Post Data = %s\n", postData)
+    logger.Printf("[POST] %s\n", req.URL.String())
+    //logger.Printf("Post Data = %s\n", postData)
     resp, err := c.Do(req)
     if err != nil {
         fmt.Printf("http.Do() error: %v\n", err)
@@ -188,5 +188,21 @@ func DumpConfig(c *config.Config){
     //    //   fmt.Printf("%s = %s\n", item.Name(), item.String())
     //    //}
     //
+    }
+}
+
+func ParseConfig2Struct(conf *config.Config, section string, data interface{}){
+    fields, _ := conf.SectionOptions(section)
+    for _, field := range fields {
+        strValue, _ := conf.String(section, field)
+        if intValue, err := strconv.Atoi(strValue); err == nil {
+            reflections.SetField(data, field, intValue)
+            continue
+        }
+        if boolValue, err := strconv.ParseBool(strValue); err == nil {
+            reflections.SetField(data, field, boolValue)
+            continue
+        }
+        reflections.SetField(data, field, strValue)
     }
 }

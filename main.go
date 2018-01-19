@@ -9,12 +9,10 @@ import (
 	"github.com/mong0520/ChainChronicleGo/clients/session"
 	"github.com/mong0520/ChainChronicleGo/utils"
 	"github.com/robfig/config"
-	"github.com/oleiade/reflections"
+
     "strings"
     //"github.com/mong0520/ChainChronicleGo/clients/quest"
 	"github.com/mong0520/ChainChronicleGo/clients/quest"
-	"reflect"
-	"github.com/BurntSushi/toml"
 )
 
 var user = &clients.User{}
@@ -59,52 +57,37 @@ func start() {
 	    logger.Printf("[%d] Processing [%s]\n", idx, flow)
 	    doAction(flow)
     }
-
-	//for i := 1; i < 10; i++ {
-	//	questInfo := &quest.Quest{}
-	//	questInfo.Type = 4
-	//	questInfo.Fid = 300467
-	//	questInfo.Qid = 220134
-	//	questInfo.Hcid = 0
-	//	questInfo.Htype = 0
-	//	questInfo.Lv = 0
-	//	questInfo.Pt = 0
-	//	questInfo.Version = 2
-	//	questInfo.StartQeust(user)
-    //
-	//	questInfo.Res = 1
-	//	questInfo.Bt = 10
-	//	questInfo.Wc = 13
-	//	questInfo.Wn = 1
-	//	questInfo.Cc = 1
-	//	questInfo.Time = "10.0"
-	//	questInfo.D = 1
-	//	questInfo.S = 1
-	//	questInfo.EndQeust(user)
-	//}
-
 }
 
 func doQuest(user *clients.User, section string){
     logger.Println("enter doQuest")
     conf := user.Config
-	questInfo := &quest.Quest{}
-    // Parse config
-    fields, _ := conf.SectionOptions(section)
-    for _, field := range fields {
-    	value, _ := conf.String(section, field)
-		logger.Printf("Field = %s, value = %v, type = %v\n", field, value, reflect.TypeOf(value))
-		if err := reflections.SetField(questInfo, field, "test") ; err != nil{
-			logger.Println(err)
-		}
-		logger.Println()
+	questInfo := quest.NewQuest()
 
+	// Read config to Struct
+	utils.ParseConfig2Struct(conf, section, questInfo)
+	
+	resp, res := questInfo.StartQeust(user)
+	switch res {
+	case 0:
+		//do nothing
+	case 103:
+		logger.Println("AP 不足，使用體力果")
+	default:
+		logger.Println("未知的錯誤")
+		logger.Println(resp)
 	}
-	logger.Printf("%v", questInfo)
 
-
-
-
+	resp, res = questInfo.EndQeust(user)
+	switch res{
+	case 0:
+		logger.Println("關卡完成")
+	case 1:
+		logger.Println("關卡失敗，已被登出")
+	default:
+		logger.Println("未知的錯誤")
+		logger.Println(resp)
+	}
 }
 
 func main() {
