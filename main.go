@@ -26,7 +26,6 @@ var actionMapping = map[string]interface{}{
 func init() {
 	logger = utils.GetLogger()
 	config, err := config.ReadDefault("conf/mong.conf")
-	configv2, err := toml.
 	if err != nil {
 		logger.Fatalln("Unable to read config, ", err)
 		return
