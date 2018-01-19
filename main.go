@@ -11,9 +11,17 @@ import (
 	"github.com/mong0520/ChainChronicleGo/clients/user"
 
 	"github.com/robfig/config"
-    "flag"
+	"github.com/jessevdk/go-flags"
+    "os"
 )
 
+type Options struct {
+    ConfigPath string `short:"c" long:"config" description:"Config path" required:"true"`
+    Action string `short:"a" long:"action" description:"Action to run" required:"false"`
+}
+
+var options Options
+var parser = flags.NewParser(&options, flags.Default)
 var metadata = &clients.Metadata{}
 var logger *log.Logger
 var actionMapping = map[string]interface{}{
@@ -21,8 +29,6 @@ var actionMapping = map[string]interface{}{
 	"STATUS": doStatus,
 	"PASSWORD": doPassword,
 }
-
-
 
 func doAction(sectionName string) {
 	for action, actionFunction := range actionMapping {
@@ -35,27 +41,23 @@ func doAction(sectionName string) {
 }
 
 func start() {
-    configPath := flag.String("config", "", "Config file path")
-    action := flag.String("action", "", "Action to run")
-    //flag.BoolVar(&showVersion, "version", false, "Print version information.")
-    flag.Parse()
-
     logger = utils.GetLogger()
-    config, err := config.ReadDefault(*configPath)
+    config, err := config.ReadDefault(options.ConfigPath)
     if err != nil {
         logger.Fatalln("Unable to read config, ", err)
         return
     }
+
     metadata.Config = config
-	utils.DumpConfig(metadata.Config)
+	//utils.DumpConfig(metadata.Config)
 	uid, _ := metadata.Config.String("GENERAL", "Uid")
 	logger.Println(uid)
 	token, _ := metadata.Config.String("GENERAL", "Token")
-	if *action == ""{
+	if options.Action == ""{
         flowString, _ := metadata.Config.String("GENERAL", "Flow")
         metadata.Flow = strings.Split(flowString, ",")
     }else{
-        flowString := *action
+        flowString := options.Action
         metadata.Flow = strings.Split(flowString, ",")
     }
 
@@ -131,7 +133,14 @@ func doQuest(user *clients.Metadata, section string) {
 }
 
 func main() {
-	start()
+    if _, err := parser.Parse(); err != nil {
+        if flagsErr, ok := err.(*flags.Error); ok && flagsErr.Type == flags.ErrHelp {
+            os.Exit(0)
+        } else {
+            os.Exit(1)
+        }
+    }
+    start()
 }
 
 func dumpUser(u *clients.Metadata) {
