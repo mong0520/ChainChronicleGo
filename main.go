@@ -14,6 +14,8 @@ import (
 	"github.com/jessevdk/go-flags"
 	"github.com/robfig/config"
 	"os"
+	"time"
+    "github.com/mong0520/ChainChronicleGo/clients/gacha"
 )
 
 type Options struct {
@@ -30,6 +32,7 @@ var actionMapping = map[string]interface{}{
 	"STATUS":   doStatus,
 	"PASSWORD": doPassword,
 	"BUY":      doBuy,
+	"GACHA":    doGacha,
 	"DEBUG":    doDebug,
 }
 
@@ -73,12 +76,23 @@ func start() {
 	}
 }
 
+func doGacha(metadata *clients.Metadata, section string) {
+    gachaInfo := gacha.NewGachaInfo()
+    utils.ParseConfig2Struct(metadata.Config, section, gachaInfo)
+    if resp, ret := gachaInfo.Gacha(metadata) ; ret == 0{
+        logger.Println(utils.Map2JsonString(resp))
+    }else{
+        logger.Println(utils.Map2JsonString(resp))
+    }
+
+}
+
 func doDebug(metadata *clients.Metadata, section string) {
-    //if resp, res := user.RecoveryAp(1, metadata.Sid) ; res == 0 {
-    //    logger.Println("Success")
-    //} else {
-    //    logger.Printf("Failed:\n%s\n", utils.Map2JsonString(resp))
-    //}
+	//if resp, res := user.RecoveryAp(1, metadata.Sid) ; res == 0 {
+	//    logger.Println("Success")
+	//} else {
+	//    logger.Printf("Failed:\n%s\n", utils.Map2JsonString(resp))
+	//}
 }
 
 func doBuy(metadata *clients.Metadata, section string) {
@@ -127,17 +141,24 @@ func doStatus(metadata *clients.Metadata, section string) {
 	}
 }
 
-func recoverAp(metadata *clients.Metadata){
-    resp, res := user.RecoveryAp(1, metadata.Sid)
-    switch res {
-    case 0:
-        logger.Println("恢復體力完成")
-    case 703:
-        logger.Println("恢復體力失敗，體力果實不足，購買體力果實")
-    default:
-        logger.Println("未知的錯誤")
-        logger.Println(utils.Map2JsonString(resp))
-    }
+func recoverAp(metadata *clients.Metadata) (ret int) {
+	resp, res := user.RecoveryAp(1, metadata.Sid)
+	ret = 0
+	switch res {
+	case 0:
+		logger.Println("恢復體力完成")
+	case 703:
+		logger.Println("恢復體力失敗，體力果實不足，購買體力果實")
+		if _, err := item.BuyItemByType(item.AP_FRUIT, metadata.Sid); err != 0 {
+			logger.Println("購買體力果實失敗")
+			ret = 1
+		}
+	default:
+		logger.Println("未知的錯誤")
+		logger.Println(utils.Map2JsonString(resp))
+		ret = 2
+	}
+	return ret
 }
 
 func doQuest(metadata *clients.Metadata, section string) {
@@ -165,14 +186,17 @@ func doQuest(metadata *clients.Metadata, section string) {
 			//do nothing
 		case 103:
 			logger.Println("AP 不足，使用體力果")
-            recoverAp(metadata)
-            current -= 1
-            continue
+			if ret := recoverAp(metadata); ret != 0 {
+				logger.Println("回復AP失敗")
+				break
+			}
+			current -= 1
+			continue
 		default:
 			logger.Println("未知的錯誤")
 			logger.Println(resp)
+			break
 		}
-
 		resp, res = questInfo.EndQeust(metadata)
 		switch res {
 		case 0:
@@ -184,8 +208,12 @@ func doQuest(metadata *clients.Metadata, section string) {
 			logger.Println("未知的錯誤")
 			logger.Println(resp)
 		}
-	}
 
+		if questInfo.AutoRaid {
+			time.Sleep(1)
+			// start raid
+		}
+	}
 }
 
 func main() {
