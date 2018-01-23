@@ -11,11 +11,16 @@ import (
 	"github.com/mong0520/ChainChronicleGo/clients/user"
 	"github.com/mong0520/ChainChronicleGo/utils"
 
+	"fmt"
+	"github.com/icza/dyno"
 	"github.com/jessevdk/go-flags"
+	"github.com/mong0520/ChainChronicleGo/clients/gacha"
+	"github.com/mong0520/ChainChronicleGo/clients/tutorial"
 	"github.com/robfig/config"
+	"github.com/satori/go.uuid"
 	"os"
 	"time"
-    "github.com/mong0520/ChainChronicleGo/clients/gacha"
+    "github.com/mong0520/ChainChronicleGo/clients/present"
 )
 
 type Options struct {
@@ -33,6 +38,8 @@ var actionMapping = map[string]interface{}{
 	"PASSWORD": doPassword,
 	"BUY":      doBuy,
 	"GACHA":    doGacha,
+	"TUTORIAL": doTutorial,
+	"DRAMA":    doDrama,
 	"DEBUG":    doDebug,
 }
 
@@ -68,6 +75,8 @@ func start() {
 	}
 
 	sid := session.Login(uid, token)
+	alldata, _ := user.GetAllData(sid)
+	metadata.AllData = alldata
 	metadata.Sid = sid
 	//dumpUser(metadata)
 	for _, flow := range metadata.Flow {
@@ -76,23 +85,178 @@ func start() {
 	}
 }
 
-func doGacha(metadata *clients.Metadata, section string) {
-    gachaInfo := gacha.NewGachaInfo()
-    utils.ParseConfig2Struct(metadata.Config, section, gachaInfo)
-    if resp, ret := gachaInfo.Gacha(metadata) ; ret == 0{
-        logger.Println(utils.Map2JsonString(resp))
-    }else{
-        logger.Println(utils.Map2JsonString(resp))
+func doDrama(metadata *clients.Metadata, section string) {
+    questInfo := quest.NewQuest()
+    //questList, _ := dyno.GetSlice(metadata.AllData, "body", 29, "data")
+    //logger.Println(questList)
+    logger.Printf("開始通過主線任務...\n")
+    flag := 0
+    counter := 0
+    dramaLevel := 1
+    gradudateThreshold := 38
+    hcid := 9420
+
+    for{
+        //logger.Println(counter)
+
+        //logger.Println(v, reflect.TypeOf(v))
+        //logger.Println(dyno.Get(metadata.AllData, "body", 29, "data", flag, "id"))
+        if qType, err := dyno.GetFloat64(metadata.AllData, "body", 29, "data", flag, "type") ; err != nil{
+            logger.Println(qType, err)
+        }else{
+            questInfo.Type = int(qType)
+        }
+        if qId, err := dyno.GetFloat64(metadata.AllData, "body", 29, "data", flag, "id") ; err != nil{
+            logger.Println(qId, err)
+        }else{
+            questInfo.QuestId = int(qId)
+        }
+
+        counter += 1
+        if counter >= gradudateThreshold{
+            // check if current LV >= 50
+            break
+        }
+        questInfo.Fid = 1965350
+        questInfo.Lv = dramaLevel
+        questInfo.Hcid = hcid
+        questInfo.Pt = 0
+        questInfo.Version = 3
+        resp, err := questInfo.StartQeust(metadata)
+        switch err{
+        case 0:
+            questInfo.EndQeust(metadata)
+            logger.Printf("%d/%d 完成關卡\n", counter, gradudateThreshold)
+        case 103:
+            logger.Printf("體力不足\n")
+            if _, err := user.RecoveryAp(1,1, metadata.Sid) ; err != 0 {
+                logger.Println("無法恢復體力")
+                panic(err)
+            }
+        default:
+            logger.Println("未知的錯誤")
+            logger.Println(utils.Map2JsonString(resp))
+            if resp, err := questInfo.GetTreasure(metadata) ; err != 0{
+                logger.Println(resp)
+            }
+        }
+        //quest_info['qtype'] = qtype
+        //quest_info['qid'] = qid
+        //quest_info['fid'] = -1
+        //quest_info['lv'] = drama_lv
+        //quest_info['hcid'] = hcid
+        //quest_info['pt'] = 0
+        //
+        //# workaround, 從response中無法判斷qtype為5的quest是寶物或是戰鬥，只好都試試看
+        //result = quest_client.start_quest(quest_info, self.account_info['sid'], version=3)
+
     }
+}
+
+func doTutorial(metadata *clients.Metadata, section string) {
+	tutorialInfo := []map[string]int{
+		{"tid": 0, "qid": -1},
+		{"tid": 1, "qid": -1},
+		{"tid": 2, "qid": -1},
+		{"tid": 3, "qid": 210001},
+		{"tid": 4, "qid": 210001},
+		{"tid": 5, "qid": -1},
+		{"tid": 6, "qid": 210002},
+		{"tid": 7, "qid": -1},
+		{"tid": 8, "qid": 210101},
+		{"tid": 9, "qid": -1},
+		{"tid": 10, "qid": 210101},
+		{"tid": 11, "qid": -1},
+		{"tid": 12, "qid": -1},
+		{"tid": 13, "qid": 210102},
+		{"tid": 14, "qid": -1},
+		{"tid": 15, "qid": 210102},
+		{"tid": 16, "qid": -1},
+		{"tid": 17, "qid": 215000},
+		{"tid": 18, "qid": 215000},
+		{"tid": 19, "qid": -1},
+		{"tid": 20, "qid": -1},
+	}
+	newUid := fmt.Sprintf("ANDO%s", uuid.Must(uuid.NewV4()).String())
+	logger.Printf("New UUID = %s", newUid)
+	// set tor proxy
+	sid := session.Login(newUid, "")
+	logger.Println(sid)
+	metadata.Sid = sid
+	resp, _ := user.GetAllData(sid)
+	openId, _ := dyno.Get(resp, "body", 4, "data", "uid")
+	logger.Printf("新帳號創立成功, UID = %s, OpenID = %.0f\n", newUid, openId)
+	//
+	for _, t := range tutorialInfo {
+		if t["qid"] != -1 {
+			param := map[string]interface{}{
+				"pt":  0,
+				"tid": t["tid"],
+			}
+			tutorial.Tutorial(sid, true, param)
+			questInfo := quest.NewQuest()
+			questInfo.QuestId = t["qid"]
+			questInfo.Fid = 1965350
+			questInfo.Pt = 0
+			if resp, err := questInfo.EndQeust(metadata) ; err != 0 {
+			    logger.Println(utils.Map2JsonString(resp), err)
+			    break
+            }
+		} else {
+			if t["tid"] == 1 {
+				param := map[string]interface{}{
+					"name": "Allen",
+					"hero": "Allen",
+					"tid":  t["tid"],
+				}
+				if resp, err := tutorial.Tutorial(sid, false, param) ; err != 0 {
+                    logger.Println(utils.Map2JsonString(resp), err)
+                    break
+                }
+			} else {
+				param := map[string]interface{}{
+					"tid": t["tid"],
+				}
+				if resp, err := tutorial.Tutorial(sid, false, param) ; err != 0 {
+                    logger.Println(utils.Map2JsonString(resp), err)
+                    break
+                }
+			}
+		}
+	}
+	logger.Printf("新帳號完成新手教學, UID = %s, OpenID = %.0f\n", newUid, openId)
+    presents := getPresents(metadata)
+    for _, p := range presents.Data{
+        logger.Printf("%+v\n", p)
+    }
+    logger.Println("禮物拿完了")
+}
+
+func doGacha(metadata *clients.Metadata, section string) {
+	gachaInfo := gacha.NewGachaInfo()
+	utils.ParseConfig2Struct(metadata.Config, section, gachaInfo)
+	if resp, ret := gachaInfo.Gacha(metadata); ret == 0 {
+		logger.Println(utils.Map2JsonString(resp))
+	} else {
+		logger.Println(utils.Map2JsonString(resp))
+	}
 
 }
 
 func doDebug(metadata *clients.Metadata, section string) {
-	//if resp, res := user.RecoveryAp(1, metadata.Sid) ; res == 0 {
-	//    logger.Println("Success")
-	//} else {
-	//    logger.Printf("Failed:\n%s\n", utils.Map2JsonString(resp))
-	//}
+	if presents, res := present.GetPresnetList(metadata.Sid) ; res == 0 {
+        presents.ReceievePresent(0)
+    }
+}
+
+func getPresents(metadata *clients.Metadata)(p *present.Presents) {
+    if presents, res := present.GetPresnetList(metadata.Sid) ; res == 0 {
+        return presents
+    }else{
+        logger.Println(res)
+        return nil
+    }
+
 }
 
 func doBuy(metadata *clients.Metadata, section string) {
@@ -126,9 +290,8 @@ func doPassword(metadata *clients.Metadata, section string) {
 func doStatus(metadata *clients.Metadata, section string) {
 	targets := []string{"comment", "uid", "heroName", "open_id", "lv", "cardMax", "accept_disciple", "name",
 		"friendCnt", "only_friend_disciple", "staminaMax", "zuLastRefilledScheduleId", "uzu_key"}
-
-	resp, _ := user.GetAllData(metadata.Sid)
-	userData := resp["body"].([]interface{})[4].(map[string]interface{})["data"]
+	userData := metadata.AllData["body"].([]interface{})[4].(map[string]interface{})["data"]
+	//logger.Println(utils.Map2JsonString(metadata.AllData))
 	for k, v := range userData.(map[string]interface{}) {
 		if utils.InArray(k, targets) {
 			switch v.(type) {
@@ -142,7 +305,7 @@ func doStatus(metadata *clients.Metadata, section string) {
 }
 
 func recoverAp(metadata *clients.Metadata) (ret int) {
-	resp, res := user.RecoveryAp(1, metadata.Sid)
+	resp, res := user.RecoveryAp(1, 1, metadata.Sid)
 	ret = 0
 	switch res {
 	case 0:

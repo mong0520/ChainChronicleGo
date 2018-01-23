@@ -18,7 +18,10 @@ import (
     "reflect"
 )
 
+
 func PostV2(requestUrl string, rawPayload string, body map[string]interface{}, sid string) (respMap map[string]interface{}, err error){
+    //fmt.Println(requestUrl)
+    //fmt.Println(body)
     logger := GetLogger()
     tempNow := int(time.Now().UnixNano())
     nowShort := strconv.Itoa(int(time.Now().Unix()))
@@ -91,6 +94,7 @@ func PostV2(requestUrl string, rawPayload string, body map[string]interface{}, s
         fmt.Printf("ioutil.ReadAll() error: %v\n", err)
         return nil, err
     }
+
     // Unzip response body
     respMap, err = DecodeResponse(ret)
     if err != nil{
@@ -98,11 +102,99 @@ func PostV2(requestUrl string, rawPayload string, body map[string]interface{}, s
         fmt.Println("Raw response = ", string(ret))
         return nil, err
     }
-
+    //fmt.Println(Map2JsonString(respMap))
     return respMap, nil
 }
+//
+//func PostV3(requestUrl string, rawPayload string, body map[string]interface{}, sid string) (ret []byte, err error){
+//    //fmt.Println(requestUrl)
+//    //fmt.Println(body)
+//    logger := GetLogger()
+//    tempNow := int(time.Now().UnixNano())
+//    nowShort := strconv.Itoa(int(time.Now().Unix()))
+//    nowHex := fmt.Sprintf("%x", tempNow)
+//
+//    // Build up post data
+//    data := url.Values{}
+//    for field := range body{
+//        vType := reflect.TypeOf(body[field].(interface{}))
+//        switch vType.String(){
+//        case "int":
+//            value := strconv.Itoa(body[field].(int))
+//            data.Add(field, value)
+//        case "string":
+//            value := body[field].(string)
+//            data.Add(field, value)
+//        default:
+//            logger.Println("Unhandled type")
+//        }
+//
+//    }
+//    data.Add("cnt", nowHex)
+//    postData := fmt.Sprintf("nature=%s", url.QueryEscape(data.Encode()))
+//    if rawPayload != ""{
+//        postData = rawPayload
+//    }
+//    req, err := http.NewRequest("POST", requestUrl, strings.NewReader(postData))
+//
+//    // Build up query string
+//    queries := req.URL.Query()
+//    queries.Set("timestamp", nowShort)
+//    queries.Set("cnt", nowHex)
+//    for field := range body {
+//        vType := reflect.TypeOf(body[field].(interface{}))
+//        switch vType.String() {
+//        case "int":
+//            value := strconv.Itoa(body[field].(int))
+//            queries.Set(field, value)
+//        case "string":
+//            value := body[field].(string)
+//            queries.Set(field, value)
+//        default:
+//            logger.Println("Unhandled type")
+//        }
+//    }
+//    req.URL.RawQuery = queries.Encode()
+//
+//    if err != nil {
+//        logger.Printf("http.NewRequest() error: %v\n", err)
+//        return nil, err
+//    }
+//    c := &http.Client{}
+//    cookie := &http.Cookie{
+//        Name: "sid",
+//        Value: sid,
+//    }
+//    req.AddCookie(cookie)
+//    //logger.Printf("[POST] %s\n", req.URL.String())
+//    //logger.Printf("Post Data = %s\n", postData)
+//    resp, err := c.Do(req)
+//    if err != nil {
+//        fmt.Printf("http.Do() error: %v\n", err)
+//        return nil, err
+//    }
+//    defer resp.Body.Close()
+//
+//    // Read response body
+//    ret, err = ioutil.ReadAll(resp.Body)
+//    if err != nil {
+//        fmt.Printf("ioutil.ReadAll() error: %v\n", err)
+//        return nil, err
+//    }
+//
+//    // Unzip response body
+//    ret, err = DecodeResponseV2(ret)
+//    if err != nil{
+//        fmt.Printf("Decode response error, %s\n", err)
+//        fmt.Println("Raw response = ", string(ret))
+//        return nil, err
+//    }
+//    //fmt.Println(Map2JsonString(respMap))
+//    return ret, nil
+//}
 
 func Post(requestUrl string, body map[string]interface{}) (respMap map[string]interface{}, err error){
+
     //nowShort := strconv.Itoa(int(time.Now().Unix()))
     nowLong := strconv.Itoa(int(time.Now().UnixNano()))
     // Build up post data
@@ -112,6 +204,7 @@ func Post(requestUrl string, body map[string]interface{}) (respMap map[string]in
         log.Println("Parameter error")
         return
     }
+
     postBodyJsonString := string(postBodyJson)
     data.Set("param", postBodyJsonString)
     req, err := http.NewRequest("POST", requestUrl, strings.NewReader(data.Encode()))
@@ -166,6 +259,20 @@ func DecodeResponse(raw []byte) (result map[string]interface{}, err error){
 
     err = json.Unmarshal(s, &result)
     return result, err
+}
+
+func DecodeResponseV2(raw []byte) (b []byte, err error){
+    rdata := bytes.NewReader(raw)
+    r, err := gzip.NewReader(rdata)
+    if err != nil{
+        return nil, err
+    }
+    s, err := ioutil.ReadAll(r)
+    if err != nil{
+        return nil, err
+    }
+
+    return s, err
 }
 
 func Map2JsonString(m map[string]interface{})(ret string){

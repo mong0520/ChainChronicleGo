@@ -16,7 +16,7 @@ func Login(uid string, token string) (sid string) {
     requestUrl := GetEndpoint()
     postBody := GetPostBody(uid, token)
     resp, _ := utils.Post(requestUrl, postBody)
-    //logger.Printf("Response = %v\n", utils.Map2JsonString(resp))
+    //fmt.Printf("Response = %v\n", utils.Map2JsonString(resp))
     sid = resp["login"].(map[string]interface{})["sid"].(string)
     return sid
 }

@@ -39,10 +39,10 @@ func SetPassword(password string, sid string) (resp map[string]interface{}, res 
     return resp, res
 }
 
-func RecoveryAp(itemId int, sid string) (resp map[string]interface{}, res int) {
+func RecoveryAp(itemType int, itemId int, sid string) (resp map[string]interface{}, res int) {
     api := "user/recover_ap"
     param := map[string]interface{}{
-        "type": 1,
+        "type": itemType,
         "item_id": itemId,
     }
     return general.GeneralAction(api, sid, param)
