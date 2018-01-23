@@ -42,8 +42,11 @@ func GetPresnetList(sid string) (presents *Presents, res int) {
 }
 
 
-func (p *Presents) ReceievePresent(presentType int){
-    for _, present := range p.Data{
-        fmt.Printf("%+v\n", present)
+func ReceievePresent(pid int, sid string) (resp map[string]interface{}, res int) {
+    action := "recv"
+    api := fmt.Sprintf("%s/%s", api, action)
+    param := map[string]interface{}{
+        "p": pid,
     }
+    return general.GeneralAction(api, sid, param)
 }

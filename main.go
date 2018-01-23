@@ -21,6 +21,7 @@ import (
 	"os"
 	"time"
     "github.com/mong0520/ChainChronicleGo/clients/present"
+	"github.com/deckarep/golang-set"
 )
 
 type Options struct {
@@ -90,15 +91,16 @@ func doDrama(metadata *clients.Metadata, section string) {
     //questList, _ := dyno.GetSlice(metadata.AllData, "body", 29, "data")
     //logger.Println(questList)
     logger.Printf("開始通過主線任務...\n")
+    maxRetryCount := 10
+    currentRetryCount := 0
     flag := 0
+    lastQid := 331043
     counter := 0
     dramaLevel := 1
     gradudateThreshold := 38
     hcid := 9420
 
     for{
-        //logger.Println(counter)
-
         //logger.Println(v, reflect.TypeOf(v))
         //logger.Println(dyno.Get(metadata.AllData, "body", 29, "data", flag, "id"))
         if qType, err := dyno.GetFloat64(metadata.AllData, "body", 29, "data", flag, "type") ; err != nil{
@@ -122,11 +124,16 @@ func doDrama(metadata *clients.Metadata, section string) {
         questInfo.Hcid = hcid
         questInfo.Pt = 0
         questInfo.Version = 3
+        errSet := mapset.NewSet()
+        errSet.Clear()
+        //logger.Printf("%+v\n", questInfo)
         resp, err := questInfo.StartQeust(metadata)
+		errSet.Add(err)
         switch err{
         case 0:
-            questInfo.EndQeust(metadata)
+            _, err = questInfo.EndQeust(metadata)
             logger.Printf("%d/%d 完成關卡\n", counter, gradudateThreshold)
+			errSet.Add(err)
         case 103:
             logger.Printf("體力不足\n")
             if _, err := user.RecoveryAp(1,1, metadata.Sid) ; err != 0 {
@@ -135,22 +142,41 @@ func doDrama(metadata *clients.Metadata, section string) {
             }
         default:
             logger.Println("未知的錯誤")
+			errSet.Add(err)
             logger.Println(utils.Map2JsonString(resp))
             if resp, err := questInfo.GetTreasure(metadata) ; err != 0{
                 logger.Println(resp)
             }
         }
-        //quest_info['qtype'] = qtype
-        //quest_info['qid'] = qid
-        //quest_info['fid'] = -1
-        //quest_info['lv'] = drama_lv
-        //quest_info['hcid'] = hcid
-        //quest_info['pt'] = 0
-        //
-        //# workaround, 從response中無法判斷qtype為5的quest是寶物或是戰鬥，只好都試試看
-        //result = quest_client.start_quest(quest_info, self.account_info['sid'], version=3)
-
+        if errSet.Contains(0) == false {
+        	logger.Printf("Unknown error in drama: %s", errSet)
+			currentRetryCount ++
+        	if currentRetryCount >= maxRetryCount {
+        		uid, _ := metadata.Config.String("GENERAL", "Uid")
+				logger.Printf("UID %s is is uable to complete Drama", uid)
+			} else{
+				logger.Println("Retry...")
+				continue
+			}
+		} else{
+			currentRetryCount = 0
+			if questInfo.QuestId == lastQid{
+				continue
+			}else{
+				if flag >= 4{
+					dramaLevel = 2
+				}
+				flag ++
+			}
+		}
     }
+	alldata, _ := user.GetAllData(metadata.Sid)
+	metadata.AllData = alldata
+	if currentLv, err := dyno.GetFloat64(metadata.AllData, "body", 4, "data", "lv") ; err != nil{
+		logger.Println(err)
+	}else{
+		logger.Printf("Current LV %0.f", currentLv)
+	}
 }
 
 func doTutorial(metadata *clients.Metadata, section string) {
@@ -225,11 +251,7 @@ func doTutorial(metadata *clients.Metadata, section string) {
 		}
 	}
 	logger.Printf("新帳號完成新手教學, UID = %s, OpenID = %.0f\n", newUid, openId)
-    presents := getPresents(metadata)
-    for _, p := range presents.Data{
-        logger.Printf("%+v\n", p)
-    }
-    logger.Println("禮物拿完了")
+    getPresents(metadata)
 }
 
 func doGacha(metadata *clients.Metadata, section string) {
@@ -244,19 +266,24 @@ func doGacha(metadata *clients.Metadata, section string) {
 }
 
 func doDebug(metadata *clients.Metadata, section string) {
-	if presents, res := present.GetPresnetList(metadata.Sid) ; res == 0 {
-        presents.ReceievePresent(0)
-    }
+    //if presents, res := present.GetPresnetList(metadata.Sid) ; res == 0 {
+    //    presents.ReceievePresent(0)
+    //}
+    return
 }
 
-func getPresents(metadata *clients.Metadata)(p *present.Presents) {
+func getPresents(metadata *clients.Metadata) {
     if presents, res := present.GetPresnetList(metadata.Sid) ; res == 0 {
-        return presents
+        for _, p := range presents.Data{
+        	if _, err := present.ReceievePresent(p.Idx, metadata.Sid) ; err == 0 {
+        		logger.Printf("-> 接收禮物 {%+v}\n", p)
+			}else{
+				logger.Printf("-> 接收禮物失敗 {%s}, %s\n", p.Text, err)
+			}
+		}
     }else{
         logger.Println(res)
-        return nil
     }
-
 }
 
 func doBuy(metadata *clients.Metadata, section string) {
