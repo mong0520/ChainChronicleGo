@@ -12,17 +12,18 @@ import (
 	"github.com/mong0520/ChainChronicleGo/utils"
 
 	"fmt"
+	"github.com/deckarep/golang-set"
 	"github.com/icza/dyno"
 	"github.com/jessevdk/go-flags"
 	"github.com/mong0520/ChainChronicleGo/clients/gacha"
+	"github.com/mong0520/ChainChronicleGo/clients/present"
+	"github.com/mong0520/ChainChronicleGo/clients/raid"
+	"github.com/mong0520/ChainChronicleGo/clients/teacher"
 	"github.com/mong0520/ChainChronicleGo/clients/tutorial"
 	"github.com/robfig/config"
 	"github.com/satori/go.uuid"
 	"os"
 	"time"
-    "github.com/mong0520/ChainChronicleGo/clients/present"
-	"github.com/deckarep/golang-set"
-	"github.com/mong0520/ChainChronicleGo/clients/raid"
 )
 
 type Options struct {
@@ -35,14 +36,15 @@ var parser = flags.NewParser(&options, flags.Default)
 var metadata = &clients.Metadata{}
 var logger *log.Logger
 var actionMapping = map[string]interface{}{
-	"QUEST":    doQuest,
-	"STATUS":   doStatus,
-	"PASSWORD": doPassword,
-	"BUY":      doBuy,
-	"GACHA":    doGacha,
-	"TUTORIAL": doTutorial,
-	"DRAMA":    doDrama,
-	"DEBUG":    doDebug,
+	"QUEST":          doQuest,
+	"STATUS":         doStatus,
+	"PASSWORD":       doPassword,
+	"BUY":            doBuy,
+	"GACHA":          doGacha,
+	"TUTORIAL":       doTutorial,
+	"DRAMA":          doDrama,
+	"DEBUG":          doDebug,
+	"RESET_DISCIPLE": doResetDisciple,
 }
 
 func doAction(sectionName string) {
@@ -83,99 +85,99 @@ func start() {
 	//dumpUser(metadata)
 	for _, flow := range metadata.Flow {
 		logger.Printf("Processing [%s]\n", flow)
-		doAction(flow)
+		doAction(strings.ToUpper(flow))
 	}
 }
 
 func doDrama(metadata *clients.Metadata, section string) {
-    questInfo := quest.NewQuest()
-    //questList, _ := dyno.GetSlice(metadata.AllData, "body", 29, "data")
-    //logger.Println(questList)
-    logger.Printf("開始通過主線任務...\n")
-    maxRetryCount := 10
-    currentRetryCount := 0
-    flag := 0
-    lastQid := 331043
-    counter := 0
-    dramaLevel := 1
-    gradudateThreshold := 38
-    hcid := 9420
+	questInfo := quest.NewQuest()
+	//questList, _ := dyno.GetSlice(metadata.AllData, "body", 29, "data")
+	//logger.Println(questList)
+	logger.Printf("開始通過主線任務...\n")
+	maxRetryCount := 10
+	currentRetryCount := 0
+	flag := 0
+	lastQid := 331043
+	counter := 0
+	dramaLevel := 1
+	gradudateThreshold := 38
+	hcid := 9420
 
-    for{
-        //logger.Println(v, reflect.TypeOf(v))
-        //logger.Println(dyno.Get(metadata.AllData, "body", 29, "data", flag, "id"))
-        if qType, err := dyno.GetFloat64(metadata.AllData, "body", 29, "data", flag, "type") ; err != nil{
-            logger.Println(qType, err)
-        }else{
-            questInfo.Type = int(qType)
-        }
-        if qId, err := dyno.GetFloat64(metadata.AllData, "body", 29, "data", flag, "id") ; err != nil{
-            logger.Println(qId, err)
-        }else{
-            questInfo.QuestId = int(qId)
-        }
+	for {
+		//logger.Println(v, reflect.TypeOf(v))
+		//logger.Println(dyno.Get(metadata.AllData, "body", 29, "data", flag, "id"))
+		if qType, err := dyno.GetFloat64(metadata.AllData, "body", 29, "data", flag, "type"); err != nil {
+			logger.Println(qType, err)
+		} else {
+			questInfo.Type = int(qType)
+		}
+		if qId, err := dyno.GetFloat64(metadata.AllData, "body", 29, "data", flag, "id"); err != nil {
+			logger.Println(qId, err)
+		} else {
+			questInfo.QuestId = int(qId)
+		}
 
-        counter += 1
-        if counter >= gradudateThreshold{
-            // check if current LV >= 50
-            break
-        }
-        questInfo.Fid = 1965350
-        questInfo.Lv = dramaLevel
-        questInfo.Hcid = hcid
-        questInfo.Pt = 0
-        questInfo.Version = 3
-        errSet := mapset.NewSet()
-        errSet.Clear()
-        //logger.Printf("%+v\n", questInfo)
-        resp, err := questInfo.StartQeust(metadata)
+		counter += 1
+		if counter >= gradudateThreshold {
+			// check if current LV >= 50
+			break
+		}
+		questInfo.Fid = 1965350
+		questInfo.Lv = dramaLevel
+		questInfo.Hcid = hcid
+		questInfo.Pt = 0
+		questInfo.Version = 3
+		errSet := mapset.NewSet()
+		errSet.Clear()
+		//logger.Printf("%+v\n", questInfo)
+		resp, err := questInfo.StartQeust(metadata)
 		errSet.Add(err)
-        switch err{
-        case 0:
-            _, err = questInfo.EndQeust(metadata)
-            logger.Printf("%d/%d 完成關卡\n", counter, gradudateThreshold)
+		switch err {
+		case 0:
+			_, err = questInfo.EndQeust(metadata)
+			logger.Printf("%d/%d 完成關卡\n", counter, gradudateThreshold)
 			errSet.Add(err)
-        case 103:
-            logger.Printf("體力不足\n")
-            if _, err := user.RecoveryAp(1,1, metadata.Sid) ; err != 0 {
-                logger.Println("無法恢復體力")
-                panic(err)
-            }
-        default:
-            logger.Println("未知的錯誤")
+		case 103:
+			logger.Printf("體力不足\n")
+			if _, err := user.RecoveryAp(1, 1, metadata.Sid); err != 0 {
+				logger.Println("無法恢復體力")
+				panic(err)
+			}
+		default:
+			logger.Println("未知的錯誤")
 			errSet.Add(err)
-            logger.Println(utils.Map2JsonString(resp))
-            if resp, err := questInfo.GetTreasure(metadata) ; err != 0{
-                logger.Println(resp)
-            }
-        }
-        if errSet.Contains(0) == false {
-        	logger.Printf("Unknown error in drama: %s", errSet)
-			currentRetryCount ++
-        	if currentRetryCount >= maxRetryCount {
-        		uid, _ := metadata.Config.String("GENERAL", "Uid")
+			logger.Println(utils.Map2JsonString(resp))
+			if resp, err := questInfo.GetTreasure(metadata); err != 0 {
+				logger.Println(resp)
+			}
+		}
+		if errSet.Contains(0) == false {
+			logger.Printf("Unknown error in drama: %s", errSet)
+			currentRetryCount++
+			if currentRetryCount >= maxRetryCount {
+				uid, _ := metadata.Config.String("GENERAL", "Uid")
 				logger.Printf("UID %s is is uable to complete Drama", uid)
-			} else{
+			} else {
 				logger.Println("Retry...")
 				continue
 			}
-		} else{
+		} else {
 			currentRetryCount = 0
-			if questInfo.QuestId == lastQid{
+			if questInfo.QuestId == lastQid {
 				continue
-			}else{
-				if flag >= 4{
+			} else {
+				if flag >= 4 {
 					dramaLevel = 2
 				}
-				flag ++
+				flag++
 			}
 		}
-    }
+	}
 	alldata, _ := user.GetAllData(metadata.Sid)
 	metadata.AllData = alldata
-	if currentLv, err := dyno.GetFloat64(metadata.AllData, "body", 4, "data", "lv") ; err != nil{
+	if currentLv, err := dyno.GetFloat64(metadata.AllData, "body", 4, "data", "lv"); err != nil {
 		logger.Println(err)
-	}else{
+	} else {
 		logger.Printf("Current LV %0.f", currentLv)
 	}
 }
@@ -225,10 +227,10 @@ func doTutorial(metadata *clients.Metadata, section string) {
 			questInfo.QuestId = t["qid"]
 			questInfo.Fid = 1965350
 			questInfo.Pt = 0
-			if resp, err := questInfo.EndQeust(metadata) ; err != 0 {
-			    logger.Println(utils.Map2JsonString(resp), err)
-			    break
-            }
+			if resp, err := questInfo.EndQeust(metadata); err != 0 {
+				logger.Println(utils.Map2JsonString(resp), err)
+				break
+			}
 		} else {
 			if t["tid"] == 1 {
 				param := map[string]interface{}{
@@ -236,23 +238,23 @@ func doTutorial(metadata *clients.Metadata, section string) {
 					"hero": "Allen",
 					"tid":  t["tid"],
 				}
-				if resp, err := tutorial.Tutorial(sid, false, param) ; err != 0 {
-                    logger.Println(utils.Map2JsonString(resp), err)
-                    break
-                }
+				if resp, err := tutorial.Tutorial(sid, false, param); err != 0 {
+					logger.Println(utils.Map2JsonString(resp), err)
+					break
+				}
 			} else {
 				param := map[string]interface{}{
 					"tid": t["tid"],
 				}
-				if resp, err := tutorial.Tutorial(sid, false, param) ; err != 0 {
-                    logger.Println(utils.Map2JsonString(resp), err)
-                    break
-                }
+				if resp, err := tutorial.Tutorial(sid, false, param); err != 0 {
+					logger.Println(utils.Map2JsonString(resp), err)
+					break
+				}
 			}
 		}
 	}
 	logger.Printf("新帳號完成新手教學, UID = %s, OpenID = %.0f\n", newUid, openId)
-    getPresents(metadata)
+	getPresents(metadata)
 }
 
 func doGacha(metadata *clients.Metadata, section string) {
@@ -267,24 +269,24 @@ func doGacha(metadata *clients.Metadata, section string) {
 }
 
 func doDebug(metadata *clients.Metadata, section string) {
-    //if presents, res := present.GetPresnetList(metadata.Sid) ; res == 0 {
-    //    presents.ReceievePresent(0)
-    //}
-    return
+	//if presents, res := present.GetPresnetList(metadata.Sid) ; res == 0 {
+	//    presents.ReceievePresent(0)
+	//}
+	return
 }
 
 func getPresents(metadata *clients.Metadata) {
-    if presents, res := present.GetPresnetList(metadata.Sid) ; res == 0 {
-        for _, p := range presents.Data{
-        	if _, err := present.ReceievePresent(p.Idx, metadata.Sid) ; err == 0 {
-        		logger.Printf("-> 接收禮物 {%+v}\n", p)
-			}else{
+	if presents, res := present.GetPresnetList(metadata.Sid); res == 0 {
+		for _, p := range presents.Data {
+			if _, err := present.ReceievePresent(p.Idx, metadata.Sid); err == 0 {
+				logger.Printf("-> 接收禮物 {%+v}\n", p)
+			} else {
 				logger.Printf("-> 接收禮物失敗 {%s}, %s\n", p.Text, err)
 			}
 		}
-    }else{
-        logger.Println(res)
-    }
+	} else {
+		logger.Println(res)
+	}
 }
 
 func doBuy(metadata *clients.Metadata, section string) {
@@ -408,44 +410,56 @@ func doQuest(metadata *clients.Metadata, section string) {
 	}
 }
 
-func raidQuest(metadata *clients.Metadata, recovery bool, section string){
+func raidQuest(metadata *clients.Metadata, recovery bool, section string) {
 	//ret, _ := raid.RaidList(metadata.Sid)
-	if bossInfo := raid.GetRaidBossInfo(metadata.Sid) ; bossInfo != nil {
+	if bossInfo := raid.GetRaidBossInfo(metadata.Sid); bossInfo != nil {
 		//logger.Printf("%+v", bossInfo)
 		logger.Printf("魔神來襲! BossId = %d, bossLv = %d\n", bossInfo.BossID, bossInfo.BossParam.Lv)
 		param := map[string]interface{}{}
 		ret, err := bossInfo.StartQuest(metadata, param)
 
-		switch err{
-        case 0:
-            if ret, err := bossInfo.EndQuest(metadata, param) ; err != 0{
-                logger.Println("無法結束魔神戰")
-                logger.Println(utils.Map2JsonString(ret))
-            }else{
-                bossInfo.GetBonus(metadata, param)
-            }
-        case 104:
-            logger.Println("魔神體力不足")
-            if recovery {
-                if ret, err := user.RecoveryBp(0, 2, metadata.Sid) ; err != 0 {
-                    logger.Println("Recover Raid point failed", ret)
-                }else{
-                    logger.Println("Recover Raid point success")
-                }
-            }
+		switch err {
+		case 0:
+			if ret, err := bossInfo.EndQuest(metadata, param); err != 0 {
+				logger.Println("無法結束魔神戰")
+				logger.Println(utils.Map2JsonString(ret))
+			} else {
+				bossInfo.GetBonus(metadata, param)
+			}
+		case 104:
+			logger.Println("魔神體力不足")
+			if recovery {
+				if ret, err := user.RecoveryBp(0, 2, metadata.Sid); err != 0 {
+					logger.Println("Recover Raid point failed", ret)
+				} else {
+					logger.Println("Recover Raid point success")
+				}
+			}
 
-        case 603:
-        case 608:
-            logger.Println("魔神已結束")
-            bossInfo.EndQuest(metadata, param)
-            bossInfo.GetBonus(metadata, param)
-        default:
-            logger.Println("未知的魔神戰錯誤", utils.Map2JsonString(ret))
-        }
+		case 603:
+		case 608:
+			logger.Println("魔神已結束")
+			bossInfo.EndQuest(metadata, param)
+			bossInfo.GetBonus(metadata, param)
+		default:
+			logger.Println("未知的魔神戰錯誤", utils.Map2JsonString(ret))
+		}
 
-
-	}else{
+	} else {
 		logger.Println("No Boss info found")
+	}
+}
+
+func doResetDisciple(metadata *clients.Metadata, section string) {
+	param := map[string]interface{}{}
+	disciples := teacher.ListDisciple(metadata, param)
+	for _, d := range disciples {
+		fmt.Println("Trying to reset disciple", d.UID, d.Resetable, d.Name)
+		if resp, err := teacher.ResetDisciple(metadata, d.UID); err != 0 {
+			logger.Println("Unable to reset Disciple", d.UID, utils.Map2JsonString(resp))
+		} else {
+			logger.Println("Reset Disciple success")
+		}
 	}
 }
 
