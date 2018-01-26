@@ -282,6 +282,17 @@ func Map2JsonString(m map[string]interface{})(ret string){
     return ret
 }
 
+func Map2Struct(m map[string]interface{}, v interface{})(ret error){
+    if d, err := json.Marshal(m) ; err != nil{
+        return err
+    }else{
+        if err := json.Unmarshal(d, v) ; err != nil{
+            return err
+        }
+    }
+    return nil
+}
+
 func GetLogger()(logger *log.Logger){
     logger = log.New(os.Stdout, "", log.LstdFlags | log.Lshortfile)
     return logger

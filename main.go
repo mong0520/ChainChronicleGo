@@ -22,6 +22,7 @@ import (
 	"time"
     "github.com/mong0520/ChainChronicleGo/clients/present"
 	"github.com/deckarep/golang-set"
+	"github.com/mong0520/ChainChronicleGo/clients/raid"
 )
 
 type Options struct {
@@ -401,8 +402,50 @@ func doQuest(metadata *clients.Metadata, section string) {
 
 		if questInfo.AutoRaid {
 			time.Sleep(1)
-			// start raid
+			logger.Println("Checking 魔神戰")
+			raidQuest(metadata, questInfo.AutoRaidRecover, section)
 		}
+	}
+}
+
+func raidQuest(metadata *clients.Metadata, recovery bool, section string){
+	//ret, _ := raid.RaidList(metadata.Sid)
+	if bossInfo := raid.GetRaidBossInfo(metadata.Sid) ; bossInfo != nil {
+		//logger.Printf("%+v", bossInfo)
+		logger.Printf("魔神來襲! BossId = %d, bossLv = %d\n", bossInfo.BossID, bossInfo.BossParam.Lv)
+		param := map[string]interface{}{}
+		ret, err := bossInfo.StartQuest(metadata, param)
+
+		switch err{
+        case 0:
+            if ret, err := bossInfo.EndQuest(metadata, param) ; err != 0{
+                logger.Println("無法結束魔神戰")
+                logger.Println(utils.Map2JsonString(ret))
+            }else{
+                bossInfo.GetBonus(metadata, param)
+            }
+        case 104:
+            logger.Println("魔神體力不足")
+            if recovery {
+                if ret, err := user.RecoveryBp(0, 2, metadata.Sid) ; err != 0 {
+                    logger.Println("Recover Raid point failed", ret)
+                }else{
+                    logger.Println("Recover Raid point success")
+                }
+            }
+
+        case 603:
+        case 608:
+            logger.Println("魔神已結束")
+            bossInfo.EndQuest(metadata, param)
+            bossInfo.GetBonus(metadata, param)
+        default:
+            logger.Println("未知的魔神戰錯誤", utils.Map2JsonString(ret))
+        }
+
+
+	}else{
+		logger.Println("No Boss info found")
 	}
 }
 

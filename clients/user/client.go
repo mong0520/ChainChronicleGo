@@ -47,3 +47,12 @@ func RecoveryAp(itemType int, itemId int, sid string) (resp map[string]interface
     }
     return general.GeneralAction(api, sid, param)
 }
+
+func RecoveryBp(itemType int, itemId int, sid string) (resp map[string]interface{}, res int) {
+    api := "user/recover_bp"
+    param := map[string]interface{}{
+        "type": itemType,
+        "item_id": itemId,
+    }
+    return general.GeneralAction(api, sid, param)
+}
