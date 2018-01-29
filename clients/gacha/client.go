@@ -12,6 +12,7 @@ type gacha struct {
     Place int
     AutoSaleThreshold int
     Verbose bool
+    AutoSale bool
 }
 
 var initValue = -1
@@ -37,6 +38,7 @@ func NewGachaInfo()(g *gacha){
         Count: initValue,
         Area: initValue,
         Place: initValue,
+        AutoSale: false,
         AutoSaleThreshold: 4,
         Verbose: true,
     }

@@ -10,6 +10,7 @@ import (
 	"github.com/mong0520/ChainChronicleGo/clients/session"
 	"github.com/mong0520/ChainChronicleGo/clients/user"
 	"github.com/mong0520/ChainChronicleGo/utils"
+	"github.com/mong0520/ChainChronicleGo/models"
 
 	"fmt"
 	"github.com/deckarep/golang-set"
@@ -24,6 +25,10 @@ import (
 	"github.com/satori/go.uuid"
 	"os"
 	"time"
+	"gopkg.in/mgo.v2"
+	"github.com/mong0520/ChainChronicleGo/controllers"
+	"gopkg.in/mgo.v2/bson"
+	"github.com/mong0520/ChainChronicleGo/clients/card"
 )
 
 type Options struct {
@@ -39,12 +44,18 @@ var actionMapping = map[string]interface{}{
 	"QUEST":          doQuest,
 	"STATUS":         doStatus,
 	"PASSWORD":       doPassword,
+	"TAKEOVER": 	  doTakeOver,
 	"BUY":            doBuy,
 	"GACHA":          doGacha,
 	"TUTORIAL":       doTutorial,
 	"DRAMA":          doDrama,
 	"DEBUG":          doDebug,
 	"RESET_DISCIPLE": doResetDisciple,
+	"CHARS":		  doShowChars,
+	"ALLDATA":        doShowAllData,
+	//"COMPOSE":        doCompose,
+	"TEACHER":		  doTeacher,
+	"DISCIPLE":		  doDisciple,
 }
 
 func doAction(sectionName string) {
@@ -59,6 +70,7 @@ func doAction(sectionName string) {
 
 func start() {
 	logger = utils.GetLogger()
+
 	config, err := config.ReadDefault(options.ConfigPath)
 	if err != nil {
 		logger.Fatalln("Unable to read config, ", err)
@@ -66,10 +78,25 @@ func start() {
 	}
 
 	metadata.Config = config
+
+	if db, err := mgo.Dial("localhost:27017") ; err != nil{
+		logger.Fatalln("Unable to connect DB", err)
+	}else{
+		metadata.DB = db
+	}
+	//card := interface{}
+	//card := models.Charainfo{}
+	//query := bson.M{"title": bson.RegEx{".*公會.*", ""}}
+	//controllers.GeneralQuery(metadata.DB, "charainfo", query, &card)
+	//logger.Printf("%+v", card.Name)
+
 	//utils.DumpConfig(metadata.Config)
 	uid, _ := metadata.Config.String("GENERAL", "Uid")
-	logger.Println(uid)
+	metadata.Uid = uid
+
+	//logger.Println(uid)
 	token, _ := metadata.Config.String("GENERAL", "Token")
+	metadata.Token = token
 	if options.Action == "" {
 		flowString, _ := metadata.Config.String("GENERAL", "Flow")
 		metadata.Flow = strings.Split(flowString, ",")
@@ -102,6 +129,7 @@ func doDrama(metadata *clients.Metadata, section string) {
 	dramaLevel := 1
 	gradudateThreshold := 38
 	hcid := 9420
+	lvThreshold := 50
 
 	for {
 		//logger.Println(v, reflect.TypeOf(v))
@@ -179,6 +207,9 @@ func doDrama(metadata *clients.Metadata, section string) {
 		logger.Println(err)
 	} else {
 		logger.Printf("Current LV %0.f", currentLv)
+		if int(currentLv) >= lvThreshold{
+			teacher.IS_GRADUATED = true
+		}
 	}
 }
 
@@ -210,7 +241,10 @@ func doTutorial(metadata *clients.Metadata, section string) {
 	logger.Printf("New UUID = %s", newUid)
 	// set tor proxy
 	sid := session.Login(newUid, "")
-	logger.Println(sid)
+	metadata.Uid = newUid
+	//logger.Println(uid)
+	token, _ := metadata.Config.String("GENERAL", "Token")
+	metadata.Token = token
 	metadata.Sid = sid
 	resp, _ := user.GetAllData(sid)
 	openId, _ := dyno.Get(resp, "body", 4, "data", "uid")
@@ -260,12 +294,91 @@ func doTutorial(metadata *clients.Metadata, section string) {
 func doGacha(metadata *clients.Metadata, section string) {
 	gachaInfo := gacha.NewGachaInfo()
 	utils.ParseConfig2Struct(metadata.Config, section, gachaInfo)
+	logger.Println("開始轉蛋")
 	if resp, ret := gachaInfo.Gacha(metadata); ret == 0 {
-		logger.Println(utils.Map2JsonString(resp))
+		gachaResult := processGachaResult(resp)
+		//logger.Println(gachaResult)
+		for _, card := range gachaResult["char"].([]models.GachaResultChara){
+			myCard := models.Charainfo{}
+			query := bson.M{"cid": card.ID}
+			controllers.GeneralQuery(metadata.DB, "charainfo", query, &myCard)
+			logger.Printf("得到 %d星卡: %s-%s", myCard.Rarity, myCard.Title, myCard.Name)
+			if gachaInfo.AutoSale && myCard.Rarity <= gachaInfo.AutoSaleThreshold{
+				doSellItem(metadata, card.Idx, "")
+			}
+		}
+		//for _, card := range gachaResult["item"].([]models.GachaResultItem){
+		//	logger.Println("得到", card.ItemID)
+		//}
+
 	} else {
 		logger.Println(utils.Map2JsonString(resp))
 	}
+}
 
+func doSellItem(metadata *clients.Metadata, cid int, section string) {
+	if ret, err := card.Sell(metadata, cid) ; err != 0 {
+		logger.Println("\t-> 賣出卡片失敗", utils.Map2JsonString(ret))
+	}else{
+		logger.Println("\t-> 賣出卡片成功")
+	}
+}
+func processGachaResult(resp map[string]interface{})(gachaResult map[string]interface{}){
+	gachaData, _ := dyno.GetSlice(resp, "body")
+	//logger.Println(utils.Map2JsonString(resp))
+	gachaResult = map[string]interface{}{
+		"char": []models.GachaResultChara{},
+		"item": []models.GachaResultItem{},
+	}
+
+	gachaResult["char"] = []models.GachaResultChara{}
+	gachaResult["item"] = []models.GachaResultItem{}
+
+	charList := make([]models.GachaResultChara, 0)
+	itemList := make([]models.GachaResultItem, 0)
+
+	for i, data := range gachaData{
+		if i == 0{
+			continue
+		}
+		dataType, _ := dyno.GetFloat64(data, "type")
+		switch dataType{
+		case 15:
+			logger.Println(i, "Type 15", data)
+		case 1:
+			//logger.Println(i, "得到角色")
+			list := data.(map[string]interface{})["data"].([]interface{})
+			for _, item := range list{
+				tmpItem := &models.GachaResultChara{}
+				if err := utils.Map2Struct(item.(map[string]interface{}), tmpItem) ; err != nil{
+					logger.Println("Unable to convert to struct", err)
+				}else{
+					charList = append(charList, *tmpItem)
+				}
+			}
+		case 2:
+			//logger.Println(i, "得到成長卡/冶鍊卡", data)
+			list := data.(map[string]interface{})["data"].([]interface{})
+			for _, item := range list{
+				tmpItem := &models.GachaResultItem{}
+				if err := utils.Map2Struct(item.(map[string]interface{}), tmpItem) ; err != nil{
+					logger.Println("Unable to convert to struct", err)
+				}else{
+					itemList = append(itemList, *tmpItem)
+				}
+			}
+		case 14:
+			continue
+		case 105:
+			//logger.Println(i, "得到武器", data)
+		default:
+			logger.Println(dataType)
+		}
+	}
+	gachaResult["char"] = charList
+	gachaResult["item"] = itemList
+
+	return gachaResult
 }
 
 func doDebug(metadata *clients.Metadata, section string) {
@@ -304,17 +417,51 @@ func doBuy(metadata *clients.Metadata, section string) {
 	}
 }
 
+func doShowChars(metadata *clients.Metadata, section string) {
+	chars, _ := dyno.GetSlice(metadata.AllData, "body", 6, "data")
+	threshold := 5
+	//logger.Println(chars)
+	for i, c := range chars{
+		card := &models.Charainfo{} // for mongodb result
+		charData := &models.CharaData{} // for alldata structure
+		utils.Map2Struct(c.(map[string]interface{}), charData)
+		if charData.Type != 0 {
+			continue // non-char cards
+		}
+		query := bson.M{"cid": charData.ID}
+		if err := controllers.GeneralQuery(metadata.DB, "charainfo", query, &card) ; err != nil {
+			logger.Println(charData.ID)
+		}else{
+			if card.Rarity >= threshold {
+				logger.Printf("%d, %s-%s, 目前等級: %d", i+1, card.Title, card.Name, charData.Lv)
+			}
+		}
+	}
+}
+
 func doPassword(metadata *clients.Metadata, section string) {
 	tempPassword := "aaa123"
 
 	resp, _ := user.GetAccount(metadata.Sid)
 	account := resp["account"].(string)
-	logger.Printf("%s\n", utils.Map2JsonString(resp))
+	//logger.Printf("%s\n", utils.Map2JsonString(resp))
 
 	resp, _ = user.SetPassword(tempPassword, metadata.Sid)
-	logger.Println(utils.Map2JsonString(resp))
+	//logger.Println(utils.Map2JsonString(resp))
 
 	logger.Printf("Account: [%s] has set password: [%s]", account, tempPassword)
+}
+
+func doTakeOver(metadata *clients.Metadata, section string) {
+	tempPassword := "aaa123"
+	account, _ := metadata.Config.String("GENERAL", "Account")
+	uuid, _ := metadata.Config.String("GENERAL", "Uid")
+	if ret, err := user.Takeover(uuid, account, tempPassword) ; err != 0{
+		logger.Println("Unable to takeover account", utils.Map2JsonString(ret))
+	}else{
+		logger.Println("帳號轉移完成")
+	}
+
 }
 
 func doStatus(metadata *clients.Metadata, section string) {
@@ -332,6 +479,10 @@ func doStatus(metadata *clients.Metadata, section string) {
 			}
 		}
 	}
+}
+
+func doShowAllData(metadata *clients.Metadata, section string) {
+	fmt.Println(utils.Map2JsonString(metadata.AllData))
 }
 
 func recoverAp(metadata *clients.Metadata) (ret int) {
@@ -448,6 +599,50 @@ func raidQuest(metadata *clients.Metadata, recovery bool, section string) {
 	} else {
 		logger.Println("No Boss info found")
 	}
+}
+
+func doDisciple(metadata *clients.Metadata, section string) {
+	teacherId, _ := metadata.Config.Int(section, "TeacherId")
+	if isGraduate, err := metadata.Config.Bool(section, "Graduate") ; err != nil{
+		// do nothing, use va
+	}else{
+		// use config value
+		teacher.IS_GRADUATED = isGraduate
+	}
+	logger.Println("Teacher ID", teacherId, "Is Graduate?", teacher.IS_GRADUATED)
+
+
+	if teacher.IS_GRADUATED{
+		// thanks teacher
+		for _, lv := range []int{5, 10, 15, 20, 25, 30, 35, 40, 45}{
+			if ret, err := teacher.ThanksAchievement(metadata, lv) ; err != 0 {
+				logger.Printf("UID %s 無法 給與 Rank %d 獎勵, res = %s\n", metadata.Uid, lv, utils.Map2JsonString(ret))
+			}else{
+				logger.Printf("UID %s 給與 Rank %d 獎勵\n", metadata.Uid, lv)
+			}
+		}
+		if ret, err := teacher.ThanksGgraduate(metadata) ; err != 0 {
+			logger.Printf("UID %s 無法畢業, res = %s\n", metadata.Uid, utils.Map2JsonString(ret))
+		}else{
+			logger.Printf("UID %s 畢業\n", metadata.Uid)
+		}
+	}else{
+		logger.Printf("UID %s 選擇 %d 為師父", metadata.Uid, teacherId)
+		if ret, err := teacher.ApplyTeacher(metadata, teacherId) ; err != 0 {
+			logger.Printf("UID %s 選擇 %d 為師父 失敗! %d", metadata.Uid, teacherId, err)
+			logger.Println(utils.Map2JsonString(ret))
+			os.Exit(-1)
+		}
+	}
+}
+
+func doTeacher(metadata *clients.Metadata, section string) {
+	if res, err := teacher.EnableTeacher(metadata) ; err !=0 {
+		logger.Println("Unable to enable teacher", utils.Map2JsonString(res))
+	} else{
+		logger.Println("Enable teacher success")
+	}
+
 }
 
 func doResetDisciple(metadata *clients.Metadata, section string) {

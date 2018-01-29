@@ -8,6 +8,8 @@ import (
 	"github.com/mong0520/ChainChronicleGo/utils"
 )
 
+var IS_GRADUATED = false
+
 type Disciple struct {
 	Beloved int `json:"beloved"`
 	Card    struct {
@@ -49,6 +51,41 @@ type Disciple struct {
 	Status             int         `json:"status"`
 	UID                int         `json:"uid"`
 }
+
+func EnableTeacher(metadata *clients.Metadata) (resp map[string]interface{}, res int) {
+	api := "teacher/toggle_acceptance"
+	param := map[string]interface{}{
+		"accept": 1,
+		"only_friend": 0,
+	}
+	return general.GeneralAction(api, metadata.Sid, param)
+}
+
+
+func ApplyTeacher(metadata *clients.Metadata, tid int) (resp map[string]interface{}, res int) {
+	api := "teacher/apply"
+	param := map[string]interface{}{
+		"tid": tid,
+	}
+	return general.GeneralAction(api, metadata.Sid, param)
+}
+
+func ThanksGgraduate(metadata *clients.Metadata) (resp map[string]interface{}, res int) {
+	api := "teacher/thanks_graduate"
+	param := map[string]interface{}{
+		"firend": 0,
+	}
+	return general.GeneralAction(api, metadata.Sid, param)
+}
+
+func ThanksAchievement(metadata *clients.Metadata, lv int) (resp map[string]interface{}, res int) {
+	api := "teacher/thanks_achievement"
+	param := map[string]interface{}{
+		"lv": lv,
+	}
+	return general.GeneralAction(api, metadata.Sid, param)
+}
+
 
 func ListDisciple(metadata *clients.Metadata, param map[string]interface{}) (discipleList []Disciple) {
 	api := "teacher/confirm_disciple"
