@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/mong0520/ChainChronicleGo/clients"
 	"github.com/mong0520/ChainChronicleGo/utils"
+    "github.com/mong0520/ChainChronicleGo/clients/general"
 )
 
 //json string to map https://play.golang.org/p/m-pUtgwFsQs
@@ -34,4 +35,10 @@ func BuyItemByType(itemType string, sid string) (resp map[string]interface{}, re
     }else{
         return nil, -1
     }
+}
+
+
+func BuyItemGeneral(metadata *clients.Metadata, param map[string]interface{}) (resp map[string]interface{}, res int) {
+    api := "token"
+    return general.GeneralAction(api, metadata.Sid, param)
 }

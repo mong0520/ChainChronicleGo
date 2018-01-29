@@ -53,7 +53,7 @@ var actionMapping = map[string]interface{}{
 	"RESET_DISCIPLE": doResetDisciple,
 	"CHARS":		  doShowChars,
 	"ALLDATA":        doShowAllData,
-	//"COMPOSE":        doCompose,
+	"COMPOSE":        doCompose,
 	"TEACHER":		  doTeacher,
 	"DISCIPLE":		  doDisciple,
 }
@@ -611,7 +611,6 @@ func doDisciple(metadata *clients.Metadata, section string) {
 	}
 	logger.Println("Teacher ID", teacherId, "Is Graduate?", teacher.IS_GRADUATED)
 
-
 	if teacher.IS_GRADUATED{
 		// thanks teacher
 		for _, lv := range []int{5, 10, 15, 20, 25, 30, 35, 40, 45}{
@@ -656,6 +655,30 @@ func doResetDisciple(metadata *clients.Metadata, section string) {
 			logger.Println("Reset Disciple success")
 		}
 	}
+}
+
+func doCompose(metadata *clients.Metadata, section string) {
+	//buyCount := 5
+	////targetWeaponNames := make([]string, 0)
+	//if eid, err := metadata.Config.Int(section, "Eid") ; err != nil{
+	//	eid = -1
+	//	logger.Println("EID:", eid)
+	//}
+	//baseWeaponId, _ := metadata.Config.Int(section, "BaseWeaponID")
+	//count, _ := metadata.Config.Int(section, "Count")
+    //
+	//targetWeaponKeyword, _ := metadata.Config.String(section, "TargetsKeyWords")
+	//targetWeaponKeywordList := strings.Split(strings.Replace(targetWeaponKeyword, " ","",  -1), ",")
+	//logger.Println(targetWeaponKeywordList)
+    //
+	//buyParam := map[string]interface{}{
+	//	"kind": "item",
+	//	"type": "weapon_ev",
+	//	"id": baseWeaponId,
+	//	"val": 1,
+	//	"price": 10,
+	//	"buy_cnt": 1,
+	//}
 }
 
 func main() {
