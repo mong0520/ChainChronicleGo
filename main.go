@@ -30,6 +30,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 	"github.com/mong0520/ChainChronicleGo/clients/card"
     "github.com/mong0520/ChainChronicleGo/clients/weapon"
+    "github.com/mong0520/ChainChronicleGo/clients/general"
 )
 
 type Options struct {
@@ -383,17 +384,10 @@ func processGachaResult(resp map[string]interface{})(gachaResult map[string]inte
 }
 
 func doDebug(metadata *clients.Metadata, section string) {
-    for i := 1; i <= 100; i++ {
-        mockList := []int{96137,96137,96137,96137,96137}
-        ret, _ := weapon.Compose(metadata, mockList, 14)
-        body, _ := dyno.GetSlice(ret, "body")
-        lastIndex := len(body)-1
-        itemId, _ := dyno.GetFloat64(ret, "body", lastIndex-1, "data", 0, "item_id")
-        myWeapon := models.Evolve{}
-        query := bson.M{"id": int(itemId)}
-        controllers.GeneralQuery(metadata.DB, "evolve", query, &myWeapon)
-        logger.Println(myWeapon.Rarity, myWeapon.ID, myWeapon.Name)
-    }
+	api := "data/uzuinfo"
+	param := map[string]interface{}{}
+	ret, _ := general.GeneralAction(api, metadata.Sid, param)
+	logger.Println(utils.Map2JsonString(ret))
 }
 
 func getPresents(metadata *clients.Metadata) {
