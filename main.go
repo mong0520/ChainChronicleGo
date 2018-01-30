@@ -29,6 +29,7 @@ import (
 	"github.com/mong0520/ChainChronicleGo/controllers"
 	"gopkg.in/mgo.v2/bson"
 	"github.com/mong0520/ChainChronicleGo/clients/card"
+    "github.com/mong0520/ChainChronicleGo/clients/weapon"
 )
 
 type Options struct {
@@ -382,10 +383,17 @@ func processGachaResult(resp map[string]interface{})(gachaResult map[string]inte
 }
 
 func doDebug(metadata *clients.Metadata, section string) {
-	//if presents, res := present.GetPresnetList(metadata.Sid) ; res == 0 {
-	//    presents.ReceievePresent(0)
-	//}
-	return
+    for i := 1; i <= 100; i++ {
+        mockList := []int{96137,96137,96137,96137,96137}
+        ret, _ := weapon.Compose(metadata, mockList, 14)
+        body, _ := dyno.GetSlice(ret, "body")
+        lastIndex := len(body)-1
+        itemId, _ := dyno.GetFloat64(ret, "body", lastIndex-1, "data", 0, "item_id")
+        myWeapon := models.Evolve{}
+        query := bson.M{"id": int(itemId)}
+        controllers.GeneralQuery(metadata.DB, "evolve", query, &myWeapon)
+        logger.Println(myWeapon.Rarity, myWeapon.ID, myWeapon.Name)
+    }
 }
 
 func getPresents(metadata *clients.Metadata) {
@@ -657,28 +665,115 @@ func doResetDisciple(metadata *clients.Metadata, section string) {
 	}
 }
 
+
+
+
 func doCompose(metadata *clients.Metadata, section string) {
-	//buyCount := 5
-	////targetWeaponNames := make([]string, 0)
-	//if eid, err := metadata.Config.Int(section, "Eid") ; err != nil{
-	//	eid = -1
-	//	logger.Println("EID:", eid)
-	//}
-	//baseWeaponId, _ := metadata.Config.Int(section, "BaseWeaponID")
-	//count, _ := metadata.Config.Int(section, "Count")
+    //mockList := []int{96064,96064,96064,96064,96064}
+    //weapon.Compose(metadata, mockList, 14)
+    //os.Exit(0)
+	weaponListRank3 := make([]int, 0)
+	weaponListRank4 := make([]int, 0)
+	weaponBaseRank5Idx := 0
+	count, _ := metadata.Config.Int(section, "Count")
+    eid := -1
+	if tmpEid, err := metadata.Config.Int(section, "Eid") ; err != nil{
+		eid = -1
+		logger.Println("EID:", eid)
+	}else{
+	    eid = tmpEid
+    }
+
+	baseWeaponId, _ := metadata.Config.Int(section, "BaseWeaponID")
+	weaponData := map[string]interface{}{
+		"kind": "item",
+		"type": "weapon_ev",
+		"id": baseWeaponId,
+		"val": 1,
+		"price": 10,
+		"buy_cnt": 1,
+	}
     //
-	//targetWeaponKeyword, _ := metadata.Config.String(section, "TargetsKeyWords")
-	//targetWeaponKeywordList := strings.Split(strings.Replace(targetWeaponKeyword, " ","",  -1), ",")
-	//logger.Println(targetWeaponKeywordList)
-    //
-	//buyParam := map[string]interface{}{
-	//	"kind": "item",
-	//	"type": "weapon_ev",
-	//	"id": baseWeaponId,
-	//	"val": 1,
-	//	"price": 10,
-	//	"buy_cnt": 1,
-	//}
+    targetWeaponKeyword, _ := metadata.Config.String(section, "TargetsKeyWords")
+	targetWeaponKeywordList := strings.Split(strings.Replace(targetWeaponKeyword, " ","",  -1), ",")
+    foundTarget := false
+
+	for i := 0 ; i < count ; i++{
+		buyCount := 5
+		if weaponBaseRank5Idx != 0{
+			buyCount = 4
+		}
+
+		//買 五把或四把 三星武器
+		for j := 0 ; j < buyCount ; j++{
+		    //logger.Println("購買武器", weaponData["id"])
+			if ret, err := item.BuyItemGeneral(metadata, weaponData) ; err != 0 {
+			    logger.Println("Unable to buy item", utils.Map2JsonString(ret))
+			    os.Exit(0)
+            }else{
+                baseWeaponIdx, _ := dyno.GetFloat64(ret, "body", 1, "data", 0, "item_id")
+                //logger.Println(baseWeaponIdx)
+                weaponListRank3 = append(weaponListRank3, int(baseWeaponIdx))
+            }
+		}
+        // 五把三星器武器，鍊成四星武器
+		if len(weaponListRank3) == 5 {
+		    //logger.Println("開始鍊金，三星*5")
+		    if ret, err := weapon.Compose(metadata, weaponListRank3, eid) ; err != 0{
+		        logger.Println("Compose error", utils.Map2JsonString(ret), err)
+		        os.Exit(0)
+            }else{
+                weaponListRank3 = nil  // clear slice
+                body, _ := dyno.GetSlice(ret, "body")
+                lastIndex := len(body)-1
+                itemId, _ := dyno.GetFloat64(ret, "body", lastIndex-1, "data", 0, "item_id")
+                //logger.Println("得到武器：", itemId)
+                weaponListRank4 = append(weaponListRank4, int(itemId))
+            }
+        }
+        // 有一張基底五星武器，且有四張三星武器
+        if weaponBaseRank5Idx != 0 && len(weaponListRank3) == 4{
+            // self.logger.info(u'開始鍊金 -  5星*1 + 3星*4')
+            weaponListRank3 = append(weaponListRank3, weaponBaseRank5Idx)
+            ret, _ := weapon.Compose(metadata, weaponListRank3, eid)
+            weaponListRank3 = nil  // clear slice
+            body, _ := dyno.GetSlice(ret, "body")
+            lastIndex := len(body)-1
+            itemId, _ := dyno.GetFloat64(ret, "body", lastIndex-1, "data", 0, "item_id")
+            myWeapon := models.Evolve{}
+            query := bson.M{"id": int(itemId)}
+            controllers.GeneralQuery(metadata.DB, "evolve", query, &myWeapon)
+            for _, targetKeyWord := range targetWeaponKeywordList{
+                if strings.Index(myWeapon.Name, targetKeyWord) != -1{
+                    foundTarget = true
+                    break
+                }
+            }
+
+            if foundTarget{
+                logger.Println("!! 得到神器：", myWeapon.Name)
+                weaponBaseRank5Idx = 0
+                break  // break main for loop
+            }else{
+                logger.Println("得到武器：", myWeapon.Name)
+                weaponBaseRank5Idx = int(itemId)
+            }
+        }else if len(weaponListRank4) == 5{
+            // 鍊出做為基底的五星武器
+            //logger.Println("開始鍊金，四星*5")
+            if ret, err := weapon.Compose(metadata, weaponListRank4, eid) ; err != 0{
+                logger.Println("Compose error", utils.Map2JsonString(ret), err)
+                os.Exit(0)
+            }else{
+                weaponListRank4 = nil  // clear slice
+                body, _ := dyno.GetSlice(ret, "body")
+                lastIndex := len(body)-1
+                itemId, _ := dyno.GetFloat64(ret, "body", lastIndex-1, "data", 0, "item_id")
+                //logger.Println("得到武器：", itemId)
+                weaponBaseRank5Idx = int(itemId)
+            }
+        }
+	}
 }
 
 func main() {

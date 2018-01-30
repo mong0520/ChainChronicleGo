@@ -169,6 +169,20 @@ type GachaResultChara struct {
     Weaponid int `json:"weaponid"`
 }
 
+type Evolve struct {
+    EvolDst   int    `json:"evol_dst"`
+    ID        int    `json:"id"`
+    Name      string `json:"name"`
+    Profile   string `json:"profile"`
+    RankLimit int    `json:"rank_limit"`
+    Rarity    int    `json:"rarity"`
+    Usable0   int    `json:"usable0"`
+    Usable1   int    `json:"usable1"`
+    Usable2   int    `json:"usable2"`
+    Ring      int    `json:"ring"`
+    Material  int    `json:"material"`
+}
+
 type GachaResultItem struct {
     Cnt    int `json:"cnt"`
     ItemID int `json:"item_id"`
