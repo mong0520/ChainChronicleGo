@@ -499,6 +499,23 @@ func doTakeOver(metadata *clients.Metadata, section string) {
 func doStatus(metadata *clients.Metadata, section string) {
 	targets := []string{"comment", "uid", "heroName", "open_id", "lv", "cardMax", "accept_disciple", "name",
 		"friendCnt", "only_friend_disciple", "staminaMax", "zuLastRefilledScheduleId", "uzu_key"}
+    itemMapping := map[int]string{
+        7: "轉蛋卷",
+        10: "金幣",
+        11: "聖靈幣",
+        13: "戒指",
+        15: "賭場幣",
+        20: "轉蛋幣",
+    }
+    specialData := metadata.AllData["body"].([]interface{})[8].(map[string]interface{})["data"]
+    for _, item := range specialData.([]interface{}){
+        itemId := item.(map[string]interface{})["item_id"].(int)
+        fmt.Println(itemId)
+        if val, ok := itemMapping[itemId]; ok{
+            logger.Printf("%s = %d\n", itemMapping[itemId], val)
+        }
+
+    }
 	userData := metadata.AllData["body"].([]interface{})[4].(map[string]interface{})["data"]
 	//logger.Println(utils.Map2JsonString(metadata.AllData))
 	for k, v := range userData.(map[string]interface{}) {
