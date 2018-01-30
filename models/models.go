@@ -1,10 +1,19 @@
 package models
 
+
 //for mongodb
+
+var mapping = map[string]interface{}{
+"reinforce": &Reinforce{},
+"evolve": &Evolve{},
+"weaponlist": &Weapon{},
+"charainfo": &Charainfo{},
+"chararein": &Chararein{},
+"questdigest": &QuestDigest{},
+"skilllist": &Skilllist{},
+}
+
 type Charainfo struct {
-    ID struct {
-        Oid string `json:"$oid"`
-    } `json:"_id"`
     Iparam1      int     `json:"iparam1"`
     Title        string  `json:"title"`
     DenjuFrom    int     `json:"denju_from"`
@@ -110,6 +119,59 @@ type Charainfo struct {
     Skillparam4  int     `json:"skillparam4"`
 }
 
+type QuestDigest struct {
+    AppendSkill struct {
+    } `json:"append_skill"`
+    AreaID      int   `json:"area_id"`
+    ChapterList []int `json:"chapter_list"`
+    Difficulty  int   `json:"difficulty"`
+    Flag        struct {
+    } `json:"flag"`
+    Kind           int           `json:"kind"`
+    KindPrm        int           `json:"kind_prm"`
+    Name           string        `json:"name"`
+    PlaceID        int           `json:"place_id"`
+    QuestID        int           `json:"quest_id"`
+    Stamina        int           `json:"stamina"`
+    BgList         []int         `json:"bg_list"`
+    DifficultyList []interface{} `json:"difficulty_list"`
+    ChapterCnt     int           `json:"chapter_cnt"`
+}
+
+type Skilllist struct {
+    Ability   int           `json:"ability"`
+    Flag      int           `json:"flag"`
+    Flag00    int           `json:"flag0_0"`
+    Flag01    int           `json:"flag0_1"`
+    Flag10    int           `json:"flag1_0"`
+    Flag11    int           `json:"flag1_1"`
+    Flavor    string        `json:"flavor"`
+    IParam0   int           `json:"iParam0"`
+    IParam1   int           `json:"iParam1"`
+    IconType  int           `json:"icon_type"`
+    Name      string        `json:"name"`
+    Param0    int           `json:"param0"`
+    Param1    int           `json:"param1"`
+    Param2    int           `json:"param2"`
+    Param3    int           `json:"param3"`
+    Param4    int           `json:"param4"`
+    Param5    int           `json:"param5"`
+    Param6    int           `json:"param6"`
+    Param7    int           `json:"param7"`
+    Param8    int           `json:"param8"`
+    Param9    int           `json:"param9"`
+    Skillid   int           `json:"skillid"`
+    Str0      string        `json:"str0"`
+    Str1      string        `json:"str1"`
+    Str2      string        `json:"str2"`
+    Str3      string        `json:"str3"`
+    Str4      string        `json:"str4"`
+    Str5      string        `json:"str5"`
+    Text      string        `json:"text"`
+    Timestamp string        `json:"timestamp"`
+    Sub       []interface{} `json:"sub"`
+}
+
 // for all data API
 type CharaData struct {
     Atk            int           `json:"atk"`
@@ -183,10 +245,55 @@ type Evolve struct {
     Material  int    `json:"material"`
 }
 
+type Weapon struct {
+    AttackMax   int    `json:"attackMax"`
+    CriticalMax int    `json:"criticalMax"`
+    EquipType   int    `json:"equip_type"`
+    GuardMax    int    `json:"guardMax"`
+    ID          int    `json:"id"`
+    Model       string `json:"model"`
+    Name        string `json:"name"`
+    Rank        int    `json:"rank"`
+    Skill       int    `json:"skill"`
+    Type        int    `json:"type"`
+    TypeAtk     int    `json:"type_atk"`
+    TypeCri     int    `json:"type_cri"`
+    TypeGrd     int    `json:"type_grd"`
+}
+
+
+type Reinforce struct {
+    ID          int     `json:"id"`
+    Name        string  `json:"name"`
+    Profile     string  `json:"profile"`
+    RankLimit   int     `json:"rank_limit"`
+    Rarity      int     `json:"rarity"`
+    Ring        int     `json:"ring"`
+    SuccessRate float64 `json:"success_rate"`
+    Type        int     `json:"type"`
+}
+
+type Chararein struct {
+    Exp     int    `json:"exp"`
+    ID      int    `json:"id"`
+    Jobtype int    `json:"jobtype"`
+    Name    string `json:"name"`
+    Profile string `json:"profile"`
+    Rarity  int    `json:"rarity"`
+    Ring    int    `json:"ring"`
+}
+
 type GachaResultItem struct {
     Cnt    int `json:"cnt"`
     ItemID int `json:"item_id"`
     UID    int `json:"uid"`
+}
+
+type GachaResultWeapon struct {
+    Cnt    int `json:"cnt"`
+    ItemID int `json:"item_id"`
+    UID    int `json:"uid"`
+    Timestamp int `json:"timestamp"`
 }
 
 type GachaResult interface {
@@ -200,4 +307,24 @@ func (g GachaResultChara) dummy() int {
 
 func (g GachaResultItem) dummy() int {
     return 0
+}
+
+func GetStruct(s string)(m interface{}){
+    //mapping := map[string]interface{}{
+    //    "reinforce": &Reinforce{},
+    //    "evolve": &Evolve{},
+    //    "weaponlist": &Weapon{},
+    //    "charainfo": &Charainfo{},
+    //    "chararein": &Chararein{},
+    //    "questdigest": &QuestDigest{},
+    //    "skilllist": &Skilllist{},
+    //}
+    if _, ok := mapping[s]; ok {
+        return mapping[s]
+    }else{
+        return nil
+    }
+
+
+
 }

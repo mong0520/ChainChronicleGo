@@ -9,28 +9,28 @@ import (
 	"github.com/mong0520/ChainChronicleGo/clients/quest"
 	"github.com/mong0520/ChainChronicleGo/clients/session"
 	"github.com/mong0520/ChainChronicleGo/clients/user"
-	"github.com/mong0520/ChainChronicleGo/utils"
 	"github.com/mong0520/ChainChronicleGo/models"
+	"github.com/mong0520/ChainChronicleGo/utils"
 
 	"fmt"
 	"github.com/deckarep/golang-set"
 	"github.com/icza/dyno"
 	"github.com/jessevdk/go-flags"
+	"github.com/mong0520/ChainChronicleGo/clients/card"
 	"github.com/mong0520/ChainChronicleGo/clients/gacha"
+	"github.com/mong0520/ChainChronicleGo/clients/general"
 	"github.com/mong0520/ChainChronicleGo/clients/present"
 	"github.com/mong0520/ChainChronicleGo/clients/raid"
 	"github.com/mong0520/ChainChronicleGo/clients/teacher"
 	"github.com/mong0520/ChainChronicleGo/clients/tutorial"
+	"github.com/mong0520/ChainChronicleGo/clients/weapon"
+	"github.com/mong0520/ChainChronicleGo/controllers"
 	"github.com/robfig/config"
 	"github.com/satori/go.uuid"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 	"os"
 	"time"
-	"gopkg.in/mgo.v2"
-	"github.com/mong0520/ChainChronicleGo/controllers"
-	"gopkg.in/mgo.v2/bson"
-	"github.com/mong0520/ChainChronicleGo/clients/card"
-    "github.com/mong0520/ChainChronicleGo/clients/weapon"
-    "github.com/mong0520/ChainChronicleGo/clients/general"
 )
 
 type Options struct {
@@ -46,18 +46,19 @@ var actionMapping = map[string]interface{}{
 	"QUEST":          doQuest,
 	"STATUS":         doStatus,
 	"PASSWORD":       doPassword,
-	"TAKEOVER": 	  doTakeOver,
+	"TAKEOVER":       doTakeOver,
 	"BUY":            doBuy,
 	"GACHA":          doGacha,
 	"TUTORIAL":       doTutorial,
 	"DRAMA":          doDrama,
 	"DEBUG":          doDebug,
 	"RESET_DISCIPLE": doResetDisciple,
-	"CHARS":		  doShowChars,
+	"CHARS":          doShowChars,
 	"ALLDATA":        doShowAllData,
 	"COMPOSE":        doCompose,
-	"TEACHER":		  doTeacher,
-	"DISCIPLE":		  doDisciple,
+	"TEACHER":        doTeacher,
+	"DISCIPLE":       doDisciple,
+	"UPDATE":         doUpdateDB,
 }
 
 func doAction(sectionName string) {
@@ -81,9 +82,9 @@ func start() {
 
 	metadata.Config = config
 
-	if db, err := mgo.Dial("localhost:27017") ; err != nil{
+	if db, err := mgo.Dial("localhost:27017"); err != nil {
 		logger.Fatalln("Unable to connect DB", err)
-	}else{
+	} else {
 		metadata.DB = db
 	}
 	//card := interface{}
@@ -112,10 +113,15 @@ func start() {
 	metadata.AllData = alldata
 	metadata.Sid = sid
 	//dumpUser(metadata)
-	for _, flow := range metadata.Flow {
-		logger.Printf("Processing [%s]\n", flow)
-		doAction(strings.ToUpper(flow))
+	flowLoop, _ := metadata.Config.Int("GENERAL", "FlowLoop")
+	for i := 1; i <= flowLoop; i++ {
+		logger.Printf("Start #%d Flow\n", i)
+		for _, flow := range metadata.Flow {
+			logger.Printf("Current action = [%s]\n", flow)
+			doAction(strings.ToUpper(flow))
+		}
 	}
+
 }
 
 func doDrama(metadata *clients.Metadata, section string) {
@@ -209,7 +215,7 @@ func doDrama(metadata *clients.Metadata, section string) {
 		logger.Println(err)
 	} else {
 		logger.Printf("Current LV %0.f", currentLv)
-		if int(currentLv) >= lvThreshold{
+		if int(currentLv) >= lvThreshold {
 			teacher.IS_GRADUATED = true
 		}
 	}
@@ -300,12 +306,12 @@ func doGacha(metadata *clients.Metadata, section string) {
 	if resp, ret := gachaInfo.Gacha(metadata); ret == 0 {
 		gachaResult := processGachaResult(resp)
 		//logger.Println(gachaResult)
-		for _, card := range gachaResult["char"].([]models.GachaResultChara){
+		for _, card := range gachaResult["char"].([]models.GachaResultChara) {
 			myCard := models.Charainfo{}
 			query := bson.M{"cid": card.ID}
 			controllers.GeneralQuery(metadata.DB, "charainfo", query, &myCard)
 			logger.Printf("得到 %d星卡: %s-%s", myCard.Rarity, myCard.Title, myCard.Name)
-			if gachaInfo.AutoSale && myCard.Rarity <= gachaInfo.AutoSaleThreshold{
+			if gachaInfo.AutoSale && myCard.Rarity <= gachaInfo.AutoSaleThreshold {
 				doSellItem(metadata, card.Idx, "")
 			}
 		}
@@ -319,60 +325,79 @@ func doGacha(metadata *clients.Metadata, section string) {
 }
 
 func doSellItem(metadata *clients.Metadata, cid int, section string) {
-	if ret, err := card.Sell(metadata, cid) ; err != 0 {
+	if ret, err := card.Sell(metadata, cid); err != 0 {
 		logger.Println("\t-> 賣出卡片失敗", utils.Map2JsonString(ret))
-	}else{
+	} else {
 		logger.Println("\t-> 賣出卡片成功")
 	}
 }
-func processGachaResult(resp map[string]interface{})(gachaResult map[string]interface{}){
+func processGachaResult(resp map[string]interface{}) (gachaResult map[string]interface{}) {
 	gachaData, _ := dyno.GetSlice(resp, "body")
 	//logger.Println(utils.Map2JsonString(resp))
 	gachaResult = map[string]interface{}{
-		"char": []models.GachaResultChara{},
-		"item": []models.GachaResultItem{},
+		"char":   []models.GachaResultChara{},
+		"item":   []models.GachaResultItem{},
+		"weapon": []models.GachaResultWeapon{},
 	}
 
 	gachaResult["char"] = []models.GachaResultChara{}
 	gachaResult["item"] = []models.GachaResultItem{}
+	gachaResult["weapon"] = []models.GachaResultWeapon{}
 
 	charList := make([]models.GachaResultChara, 0)
 	itemList := make([]models.GachaResultItem, 0)
+	weaponList := make([]models.GachaResultWeapon, 0)
 
-	for i, data := range gachaData{
-		if i == 0{
+	for i, data := range gachaData {
+		if i == 0 {
 			continue
 		}
 		dataType, _ := dyno.GetFloat64(data, "type")
-		switch dataType{
+		switch dataType {
 		case 15:
 			logger.Println(i, "Type 15", data)
 		case 1:
 			//logger.Println(i, "得到角色")
 			list := data.(map[string]interface{})["data"].([]interface{})
-			for _, item := range list{
+			for _, item := range list {
 				tmpItem := &models.GachaResultChara{}
-				if err := utils.Map2Struct(item.(map[string]interface{}), tmpItem) ; err != nil{
+				if err := utils.Map2Struct(item.(map[string]interface{}), tmpItem); err != nil {
 					logger.Println("Unable to convert to struct", err)
-				}else{
+				} else {
 					charList = append(charList, *tmpItem)
 				}
 			}
 		case 2:
 			//logger.Println(i, "得到成長卡/冶鍊卡", data)
 			list := data.(map[string]interface{})["data"].([]interface{})
-			for _, item := range list{
+			for _, item := range list {
 				tmpItem := &models.GachaResultItem{}
-				if err := utils.Map2Struct(item.(map[string]interface{}), tmpItem) ; err != nil{
+				tmpDBItem := &models.Chararein{}
+				if err := utils.Map2Struct(item.(map[string]interface{}), tmpItem); err != nil {
 					logger.Println("Unable to convert to struct", err)
-				}else{
+				} else {
+					query := bson.M{"id": tmpItem.ItemID}
+					controllers.GeneralQuery(metadata.DB, "chararein", query, tmpDBItem)
+					logger.Println(i, "得到成長卡/冶鍊卡", tmpDBItem.Name)
 					itemList = append(itemList, *tmpItem)
 				}
 			}
 		case 14:
 			continue
 		case 105:
-			//logger.Println(i, "得到武器", data)
+			list := data.(map[string]interface{})["data"].([]interface{})
+			for _, item := range list {
+				tmpItem := &models.GachaResultWeapon{}
+				//tmpDBItem := &models.Chararein{}
+				if err := utils.Map2Struct(item.(map[string]interface{}), tmpItem); err != nil {
+					logger.Println("Unable to convert to struct", err)
+				} else {
+					//query := bson.M{"id": tmpItem.ItemID}
+					//controllers.GeneralQuery(metadata.DB, "chararein", query, tmpDBItem)
+					logger.Println(i, "得到武器卡", tmpItem.ItemID, "目前張數:", tmpItem.Cnt)
+					weaponList = append(weaponList, *tmpItem)
+				}
+			}
 		default:
 			logger.Println(dataType)
 		}
@@ -384,11 +409,16 @@ func processGachaResult(resp map[string]interface{})(gachaResult map[string]inte
 }
 
 func doDebug(metadata *clients.Metadata, section string) {
-	api := "data/uzuinfo"
+	api := "data/weaponlist"
 	param := map[string]interface{}{}
 	ret, _ := general.GeneralAction(api, metadata.Sid, param)
 	logger.Println(utils.Map2JsonString(ret))
 }
+
+func doUpdateDB(metadata *clients.Metadata, section string) {
+    controllers.UpdateDB(metadata)
+}
+
 
 func getPresents(metadata *clients.Metadata) {
 	if presents, res := present.GetPresnetList(metadata.Sid); res == 0 {
@@ -423,17 +453,17 @@ func doShowChars(metadata *clients.Metadata, section string) {
 	chars, _ := dyno.GetSlice(metadata.AllData, "body", 6, "data")
 	threshold := 5
 	//logger.Println(chars)
-	for i, c := range chars{
-		card := &models.Charainfo{} // for mongodb result
+	for i, c := range chars {
+		card := &models.Charainfo{}     // for mongodb result
 		charData := &models.CharaData{} // for alldata structure
 		utils.Map2Struct(c.(map[string]interface{}), charData)
 		if charData.Type != 0 {
 			continue // non-char cards
 		}
 		query := bson.M{"cid": charData.ID}
-		if err := controllers.GeneralQuery(metadata.DB, "charainfo", query, &card) ; err != nil {
+		if err := controllers.GeneralQuery(metadata.DB, "charainfo", query, &card); err != nil {
 			logger.Println(charData.ID)
-		}else{
+		} else {
 			if card.Rarity >= threshold {
 				logger.Printf("%d, %s-%s, 目前等級: %d", i+1, card.Title, card.Name, charData.Lv)
 			}
@@ -458,9 +488,9 @@ func doTakeOver(metadata *clients.Metadata, section string) {
 	tempPassword := "aaa123"
 	account, _ := metadata.Config.String("GENERAL", "Account")
 	uuid, _ := metadata.Config.String("GENERAL", "Uid")
-	if ret, err := user.Takeover(uuid, account, tempPassword) ; err != 0{
+	if ret, err := user.Takeover(uuid, account, tempPassword); err != 0 {
 		logger.Println("Unable to takeover account", utils.Map2JsonString(ret))
-	}else{
+	} else {
 		logger.Println("帳號轉移完成")
 	}
 
@@ -605,31 +635,31 @@ func raidQuest(metadata *clients.Metadata, recovery bool, section string) {
 
 func doDisciple(metadata *clients.Metadata, section string) {
 	teacherId, _ := metadata.Config.Int(section, "TeacherId")
-	if isGraduate, err := metadata.Config.Bool(section, "Graduate") ; err != nil{
+	if isGraduate, err := metadata.Config.Bool(section, "Graduate"); err != nil {
 		// do nothing, use va
-	}else{
+	} else {
 		// use config value
 		teacher.IS_GRADUATED = isGraduate
 	}
 	logger.Println("Teacher ID", teacherId, "Is Graduate?", teacher.IS_GRADUATED)
 
-	if teacher.IS_GRADUATED{
+	if teacher.IS_GRADUATED {
 		// thanks teacher
-		for _, lv := range []int{5, 10, 15, 20, 25, 30, 35, 40, 45}{
-			if ret, err := teacher.ThanksAchievement(metadata, lv) ; err != 0 {
+		for _, lv := range []int{5, 10, 15, 20, 25, 30, 35, 40, 45} {
+			if ret, err := teacher.ThanksAchievement(metadata, lv); err != 0 {
 				logger.Printf("UID %s 無法 給與 Rank %d 獎勵, res = %s\n", metadata.Uid, lv, utils.Map2JsonString(ret))
-			}else{
+			} else {
 				logger.Printf("UID %s 給與 Rank %d 獎勵\n", metadata.Uid, lv)
 			}
 		}
-		if ret, err := teacher.ThanksGgraduate(metadata) ; err != 0 {
+		if ret, err := teacher.ThanksGgraduate(metadata); err != 0 {
 			logger.Printf("UID %s 無法畢業, res = %s\n", metadata.Uid, utils.Map2JsonString(ret))
-		}else{
+		} else {
 			logger.Printf("UID %s 畢業\n", metadata.Uid)
 		}
-	}else{
+	} else {
 		logger.Printf("UID %s 選擇 %d 為師父", metadata.Uid, teacherId)
-		if ret, err := teacher.ApplyTeacher(metadata, teacherId) ; err != 0 {
+		if ret, err := teacher.ApplyTeacher(metadata, teacherId); err != 0 {
 			logger.Printf("UID %s 選擇 %d 為師父 失敗! %d", metadata.Uid, teacherId, err)
 			logger.Println(utils.Map2JsonString(ret))
 			os.Exit(-1)
@@ -638,9 +668,9 @@ func doDisciple(metadata *clients.Metadata, section string) {
 }
 
 func doTeacher(metadata *clients.Metadata, section string) {
-	if res, err := teacher.EnableTeacher(metadata) ; err !=0 {
+	if res, err := teacher.EnableTeacher(metadata); err != 0 {
 		logger.Println("Unable to enable teacher", utils.Map2JsonString(res))
-	} else{
+	} else {
 		logger.Println("Enable teacher success")
 	}
 
@@ -659,114 +689,111 @@ func doResetDisciple(metadata *clients.Metadata, section string) {
 	}
 }
 
-
-
-
 func doCompose(metadata *clients.Metadata, section string) {
-    //mockList := []int{96064,96064,96064,96064,96064}
-    //weapon.Compose(metadata, mockList, 14)
-    //os.Exit(0)
+	//mockList := []int{96064,96064,96064,96064,96064}
+	//weapon.Compose(metadata, mockList, 14)
+	//os.Exit(0)
 	weaponListRank3 := make([]int, 0)
 	weaponListRank4 := make([]int, 0)
 	weaponBaseRank5Idx := 0
 	count, _ := metadata.Config.Int(section, "Count")
-    eid := -1
-	if tmpEid, err := metadata.Config.Int(section, "Eid") ; err != nil{
+	eid := -1
+	if tmpEid, err := metadata.Config.Int(section, "Eid"); err != nil {
 		eid = -1
 		logger.Println("EID:", eid)
-	}else{
-	    eid = tmpEid
-    }
+	} else {
+		eid = tmpEid
+	}
 
 	baseWeaponId, _ := metadata.Config.Int(section, "BaseWeaponID")
 	weaponData := map[string]interface{}{
-		"kind": "item",
-		"type": "weapon_ev",
-		"id": baseWeaponId,
-		"val": 1,
-		"price": 10,
+		"kind":    "item",
+		"type":    "weapon_ev",
+		"id":      baseWeaponId,
+		"val":     1,
+		"price":   10,
 		"buy_cnt": 1,
 	}
-    //
-    targetWeaponKeyword, _ := metadata.Config.String(section, "TargetsKeyWords")
-	targetWeaponKeywordList := strings.Split(strings.Replace(targetWeaponKeyword, " ","",  -1), ",")
-    foundTarget := false
+	//
+	targetWeaponKeyword, _ := metadata.Config.String(section, "TargetsKeyWords")
+	targetWeaponKeywordList := strings.Split(strings.Replace(targetWeaponKeyword, " ", "", -1), ",")
+	foundTarget := false
 
-	for i := 0 ; i < count ; i++{
+	for i := 0; i < count; i++ {
 		buyCount := 5
-		if weaponBaseRank5Idx != 0{
+		if weaponBaseRank5Idx != 0 {
 			buyCount = 4
 		}
 
 		//買 五把或四把 三星武器
-		for j := 0 ; j < buyCount ; j++{
-		    //logger.Println("購買武器", weaponData["id"])
-			if ret, err := item.BuyItemGeneral(metadata, weaponData) ; err != 0 {
-			    logger.Println("Unable to buy item", utils.Map2JsonString(ret))
-			    os.Exit(0)
-            }else{
-                baseWeaponIdx, _ := dyno.GetFloat64(ret, "body", 1, "data", 0, "item_id")
-                //logger.Println(baseWeaponIdx)
-                weaponListRank3 = append(weaponListRank3, int(baseWeaponIdx))
-            }
+		for j := 0; j < buyCount; j++ {
+			//logger.Println("購買武器", weaponData["id"])
+			if ret, err := item.BuyItemGeneral(metadata, weaponData); err != 0 {
+				logger.Println("Unable to buy item", utils.Map2JsonString(ret))
+				os.Exit(0)
+			} else {
+				baseWeaponIdx, _ := dyno.GetFloat64(ret, "body", 1, "data", 0, "item_id")
+				//logger.Println(baseWeaponIdx)
+				weaponListRank3 = append(weaponListRank3, int(baseWeaponIdx))
+			}
 		}
-        // 五把三星器武器，鍊成四星武器
+		// 五把三星器武器，鍊成四星武器
 		if len(weaponListRank3) == 5 {
-		    //logger.Println("開始鍊金，三星*5")
-		    if ret, err := weapon.Compose(metadata, weaponListRank3, eid) ; err != 0{
-		        logger.Println("Compose error", utils.Map2JsonString(ret), err)
-		        os.Exit(0)
-            }else{
-                weaponListRank3 = nil  // clear slice
-                body, _ := dyno.GetSlice(ret, "body")
-                lastIndex := len(body)-1
-                itemId, _ := dyno.GetFloat64(ret, "body", lastIndex-1, "data", 0, "item_id")
-                //logger.Println("得到武器：", itemId)
-                weaponListRank4 = append(weaponListRank4, int(itemId))
-            }
-        }
-        // 有一張基底五星武器，且有四張三星武器
-        if weaponBaseRank5Idx != 0 && len(weaponListRank3) == 4{
-            // self.logger.info(u'開始鍊金 -  5星*1 + 3星*4')
-            weaponListRank3 = append(weaponListRank3, weaponBaseRank5Idx)
-            ret, _ := weapon.Compose(metadata, weaponListRank3, eid)
-            weaponListRank3 = nil  // clear slice
-            body, _ := dyno.GetSlice(ret, "body")
-            lastIndex := len(body)-1
-            itemId, _ := dyno.GetFloat64(ret, "body", lastIndex-1, "data", 0, "item_id")
-            myWeapon := models.Evolve{}
-            query := bson.M{"id": int(itemId)}
-            controllers.GeneralQuery(metadata.DB, "evolve", query, &myWeapon)
-            for _, targetKeyWord := range targetWeaponKeywordList{
-                if strings.Index(myWeapon.Name, targetKeyWord) != -1{
-                    foundTarget = true
-                    break
-                }
-            }
+			//logger.Println("開始鍊金，三星*5")
+			if ret, err := weapon.Compose(metadata, weaponListRank3, eid); err != 0 {
+				logger.Println("Compose error", utils.Map2JsonString(ret), err)
+				os.Exit(0)
+			} else {
+				weaponListRank3 = nil // clear slice
+				body, _ := dyno.GetSlice(ret, "body")
+				lastIndex := len(body) - 1
+				itemId, _ := dyno.GetFloat64(ret, "body", lastIndex-1, "data", 0, "item_id")
+				//logger.Println("得到武器：", itemId)
+				weaponListRank4 = append(weaponListRank4, int(itemId))
+			}
+		}
+		// 有一張基底五星武器，且有四張三星武器
+		if weaponBaseRank5Idx != 0 && len(weaponListRank3) == 4 {
+			// self.logger.info(u'開始鍊金 -  5星*1 + 3星*4')
+			weaponListRank3 = append(weaponListRank3, weaponBaseRank5Idx)
+			ret, _ := weapon.Compose(metadata, weaponListRank3, eid)
+			weaponListRank3 = nil // clear slice
+			body, _ := dyno.GetSlice(ret, "body")
+			lastIndex := len(body) - 1
+			itemId, _ := dyno.GetFloat64(ret, "body", lastIndex-1, "data", 0, "item_id")
+			myWeapon := models.Evolve{}
+			query := bson.M{"id": int(itemId)}
+			controllers.GeneralQuery(metadata.DB, "evolve", query, &myWeapon)
+			for _, targetKeyWord := range targetWeaponKeywordList {
+				if strings.Index(myWeapon.Name, targetKeyWord) != -1 {
+					foundTarget = true
+					break
+				}
+			}
 
-            if foundTarget{
-                logger.Println("!! 得到神器：", myWeapon.Name)
-                weaponBaseRank5Idx = 0
-                break  // break main for loop
-            }else{
-                logger.Println("得到武器：", myWeapon.Name)
-                weaponBaseRank5Idx = int(itemId)
-            }
-        }else if len(weaponListRank4) == 5{
-            // 鍊出做為基底的五星武器
-            //logger.Println("開始鍊金，四星*5")
-            if ret, err := weapon.Compose(metadata, weaponListRank4, eid) ; err != 0{
-                logger.Println("Compose error", utils.Map2JsonString(ret), err)
-                os.Exit(0)
-            }else{
-                weaponListRank4 = nil  // clear slice
-                body, _ := dyno.GetSlice(ret, "body")
-                lastIndex := len(body)-1
-                itemId, _ := dyno.GetFloat64(ret, "body", lastIndex-1, "data", 0, "item_id")
-                //logger.Println("得到武器：", itemId)
-                weaponBaseRank5Idx = int(itemId)
-            }
-        }
+			if foundTarget {
+				logger.Println("!! 得到神器：", myWeapon.Name)
+				weaponBaseRank5Idx = 0
+				break // break main for loop
+			} else {
+				logger.Println("得到武器：", myWeapon.Name)
+				weaponBaseRank5Idx = int(itemId)
+			}
+		} else if len(weaponListRank4) == 5 {
+			// 鍊出做為基底的五星武器
+			//logger.Println("開始鍊金，四星*5")
+			if ret, err := weapon.Compose(metadata, weaponListRank4, eid); err != 0 {
+				logger.Println("Compose error", utils.Map2JsonString(ret), err)
+				os.Exit(0)
+			} else {
+				weaponListRank4 = nil // clear slice
+				body, _ := dyno.GetSlice(ret, "body")
+				lastIndex := len(body) - 1
+				itemId, _ := dyno.GetFloat64(ret, "body", lastIndex-1, "data", 0, "item_id")
+				//logger.Println("得到武器：", itemId)
+				weaponBaseRank5Idx = int(itemId)
+			}
+		}
 	}
 }
 
