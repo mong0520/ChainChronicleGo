@@ -1,5 +1,12 @@
 package: github.com/mong0520/ChainChronicleGo
 import:
-- package: github.com/robfig/config
+- package: github.com/deckarep/golang-set
+- package: github.com/goinggo/mapstructure
+- package: github.com/icza/dyno
+- package: github.com/jessevdk/go-flags
 - package: github.com/oleiade/reflections
-  version: ~1.0.0
+- package: github.com/robfig/config
+- package: github.com/satori/go.uuid
+- package: gopkg.in/mgo.v2
+  subpackages:
+  - bson

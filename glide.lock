@@ -1,8 +1,0 @@
-hash: 9be870631a55930c3867b134ef1dec410dfa3057f7735bc3110355b9411a5e67
-updated: 2018-01-19T12:14:21.937665+08:00
-imports:
-- name: github.com/oleiade/reflections
-  version: 2b6ec3da648e3e834dc41bad8d9ed7f2dc6a9496
-- name: github.com/robfig/config
-  version: 0f78529c8c7e3e9a25f15876532ecbc07c7d99e6
-testImports: []
