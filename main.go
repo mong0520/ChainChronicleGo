@@ -37,6 +37,7 @@ import (
 type Options struct {
 	ConfigPath string `short:"c" long:"config" description:"Config path" required:"true"`
 	Action     string `short:"a" long:"action" description:"Action to run" required:"false"`
+    Repeat     int `short:"r" long:"repeat" description:"Repeat action for r times" required:"false"`
 }
 
 var options Options
@@ -103,9 +104,11 @@ func start() {
 	metadata.Token = token
 	if options.Action == "" {
 		flowString, _ := metadata.Config.String("GENERAL", "Flow")
+        flowString = strings.Replace(flowString, " ", "", -1)
 		metadata.Flow = strings.Split(flowString, ",")
 	} else {
 		flowString := options.Action
+        flowString = strings.Replace(flowString, " ", "", -1)
 		metadata.Flow = strings.Split(flowString, ",")
 	}
 
@@ -115,12 +118,20 @@ func start() {
 	metadata.Sid = sid
 	//dumpUser(metadata)
 	flowLoop, _ := metadata.Config.Int("GENERAL", "FlowLoop")
+	if options.Repeat > 0{
+        flowLoop = options.Repeat
+    }
+	sleepDuration, _:= metadata.Config.Int("GENERAL", "FlowLoopDelay")
 	for i := 1; i <= flowLoop; i++ {
 		logger.Printf("Start #%d Flow\n", i)
 		for _, flow := range metadata.Flow {
 			logger.Printf("Current action = [%s]\n", flow)
 			doAction(strings.ToUpper(flow))
 		}
+		if sleepDuration > 0{
+            logger.Println("Waiting", sleepDuration, "seconds")
+            time.Sleep(time.Second * time.Duration(sleepDuration))
+        }
 	}
 
 }
@@ -565,7 +576,7 @@ func recoverAp(metadata *clients.Metadata) (ret int) {
 }
 
 func doQuest(metadata *clients.Metadata, section string) {
-	logger.Println("enter doQuest")
+	//logger.Println("enter doQuest")
 	conf := metadata.Config
 	questInfo := quest.NewQuest()
 	count, _ := conf.Int(section, "Count")
@@ -613,8 +624,8 @@ func doQuest(metadata *clients.Metadata, section string) {
 		}
 
 		if questInfo.AutoRaid {
-			time.Sleep(1)
-			logger.Println("Checking 魔神戰")
+			//time.Sleep(time.Second)
+			//logger.Println("Checking 魔神戰")
 			raidQuest(metadata, questInfo.AutoRaidRecover, section)
 		}
 	}
@@ -640,9 +651,9 @@ func raidQuest(metadata *clients.Metadata, recovery bool, section string) {
 			logger.Println("魔神體力不足")
 			if recovery {
 				if ret, err := user.RecoveryBp(0, 2, metadata.Sid); err != 0 {
-					logger.Println("Recover Raid point failed", ret)
+					logger.Println("\t ->回復體力失敗", ret)
 				} else {
-					logger.Println("Recover Raid point success")
+					logger.Println("\t ->回復體力成功")
 				}
 			}
 
