@@ -31,6 +31,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 	"os"
 	"time"
+	"reflect"
 )
 
 type Options struct {
@@ -509,10 +510,19 @@ func doStatus(metadata *clients.Metadata, section string) {
     }
     specialData := metadata.AllData["body"].([]interface{})[8].(map[string]interface{})["data"]
     for _, item := range specialData.([]interface{}){
-        itemId := item.(map[string]interface{})["item_id"].(int)
-        fmt.Println(itemId)
-        if val, ok := itemMapping[itemId]; ok{
-            logger.Printf("%s = %d\n", itemMapping[itemId], val)
+        itemId := item.(map[string]interface{})["item_id"]
+		cnt := item.(map[string]interface{})["cnt"]
+		//logger.Println(itemId, reflect.TypeOf(itemId))
+		//logger.Println(cnt, reflect.TypeOf(cnt))
+        //fmt.Println(itemId)
+        if val, ok := itemMapping[int(itemId.(float64))]; ok{
+        	switch reflect.TypeOf(cnt).Kind(){
+			case reflect.String:
+				logger.Printf("%s = %s\n", val, cnt.(string))
+			case reflect.Float64:
+				logger.Printf("%s = %.0f\n", val, cnt.(float64))
+			}
+
         }
 
     }
