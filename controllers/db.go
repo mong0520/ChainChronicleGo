@@ -17,7 +17,6 @@ import (
 
 func GeneralQuery(session *mgo.Session, collection string, query interface{}, result interface{})(err error){
     if err := session.DB("cc").C(collection).Find(query).One(result) ; err != nil{
-        fmt.Println(err)
         return err
     }else{
         return nil

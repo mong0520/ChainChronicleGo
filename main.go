@@ -317,19 +317,16 @@ func doGacha(metadata *clients.Metadata, section string) {
 	logger.Println("開始轉蛋")
 	if resp, ret := gachaInfo.Gacha(metadata); ret == 0 {
 		gachaResult := processGachaResult(resp)
-		//logger.Println(gachaResult)
 		for _, card := range gachaResult["char"].([]models.GachaResultChara) {
 			myCard := models.Charainfo{}
 			query := bson.M{"cid": card.ID}
 			controllers.GeneralQuery(metadata.DB, "charainfo", query, &myCard)
-			logger.Printf("得到 %d星卡: %s-%s", myCard.Rarity, myCard.Title, myCard.Name)
-			if gachaInfo.AutoSale && myCard.Rarity <= gachaInfo.AutoSaleThreshold {
+			//logger.Printf("得到 %d星卡: %s-%s", myCard.Rarity, myCard.Title, myCard.Name)
+			if gachaInfo.AutoSell && myCard.Rarity <= gachaInfo.AutoSellRarityThreshold {
+			    logger.Println("賣出卡片...")
 				doSellItem(metadata, card.Idx, "")
 			}
 		}
-		//for _, card := range gachaResult["item"].([]models.GachaResultItem){
-		//	logger.Println("得到", card.ItemID)
-		//}
 
 	} else {
 		logger.Println(utils.Map2JsonString(resp))
@@ -372,12 +369,19 @@ func processGachaResult(resp map[string]interface{}) (gachaResult map[string]int
 			//logger.Println(i, "得到角色")
 			list := data.(map[string]interface{})["data"].([]interface{})
 			for _, item := range list {
-				tmpItem := &models.GachaResultChara{}
-				if err := utils.Map2Struct(item.(map[string]interface{}), tmpItem); err != nil {
-					logger.Println("Unable to convert to struct", err)
-				} else {
-					charList = append(charList, *tmpItem)
-				}
+                tmpItem := &models.GachaResultChara{}
+                tmpDBItem := &models.Charainfo{}
+                if err := utils.Map2Struct(item.(map[string]interface{}), tmpItem); err != nil {
+                    logger.Println("Unable to convert to struct", err)
+                } else {
+                    query := bson.M{"cid": tmpItem.ID}
+                    if err := controllers.GeneralQuery(metadata.DB, "charainfo", query, tmpDBItem); err!=nil{
+                        logger.Println(i, "得到", tmpItem.ID)
+                    }else{
+                        logger.Printf("得到 %d星卡: %s-%s", tmpDBItem.Rarity, tmpDBItem.Title, tmpDBItem.Name)
+                    }
+                    charList = append(charList, *tmpItem)
+                }
 			}
 		case 2:
 			//logger.Println(i, "得到成長卡/冶鍊卡", data)
@@ -390,7 +394,7 @@ func processGachaResult(resp map[string]interface{}) (gachaResult map[string]int
 				} else {
 					query := bson.M{"id": tmpItem.ItemID}
 					controllers.GeneralQuery(metadata.DB, "chararein", query, tmpDBItem)
-					logger.Println(i, "得到成長卡/冶鍊卡", tmpDBItem.Name)
+					logger.Println(i, "得到", tmpDBItem.Name)
 					itemList = append(itemList, *tmpItem)
 				}
 			}
@@ -400,13 +404,16 @@ func processGachaResult(resp map[string]interface{}) (gachaResult map[string]int
 			list := data.(map[string]interface{})["data"].([]interface{})
 			for _, item := range list {
 				tmpItem := &models.GachaResultWeapon{}
-				//tmpDBItem := &models.Chararein{}
+				tmpDBItem := &models.Weapon{}
 				if err := utils.Map2Struct(item.(map[string]interface{}), tmpItem); err != nil {
 					logger.Println("Unable to convert to struct", err)
 				} else {
-					//query := bson.M{"id": tmpItem.ItemID}
-					//controllers.GeneralQuery(metadata.DB, "chararein", query, tmpDBItem)
-					logger.Println(i, "得到武器卡", tmpItem.ItemID, "目前張數:", tmpItem.Cnt)
+					query := bson.M{"id": tmpItem.ItemID}
+					if err := controllers.GeneralQuery(metadata.DB, "evolve", query, tmpDBItem); err!=nil{
+                        logger.Println(i, "得到", tmpItem.ItemID)
+                    }else{
+                        logger.Println(i, "得到", tmpDBItem.Name)
+                    }
 					weaponList = append(weaponList, *tmpItem)
 				}
 			}
