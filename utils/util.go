@@ -16,13 +16,14 @@ import (
     "github.com/oleiade/reflections"
     "github.com/robfig/config"
     "reflect"
+    "io"
 )
 
 
 func PostV2(requestUrl string, rawPayload string, body map[string]interface{}, sid string) (respMap map[string]interface{}, err error){
     //fmt.Println(requestUrl)
     //fmt.Println(body)
-    logger := GetLogger()
+    logger := GetLogger(nil)
     tempNow := int(time.Now().UnixNano())
     nowShort := strconv.Itoa(int(time.Now().Unix()))
     nowHex := fmt.Sprintf("%x", tempNow)
@@ -154,8 +155,13 @@ func Map2Struct(m map[string]interface{}, v interface{})(ret error){
     return nil
 }
 
-func GetLogger()(logger *log.Logger){
-    logger = log.New(os.Stdout, "", log.LstdFlags | log.Lshortfile)
+func GetLogger(f *os.File)(logger *log.Logger){
+    if f != nil{
+        logger = log.New(io.MultiWriter(os.Stdout, f), "", log.LstdFlags | log.Lshortfile)
+    }else{
+        logger = log.New(os.Stdout, "", log.LstdFlags | log.Lshortfile)
+    }
+
     return logger
 }
 

@@ -32,6 +32,7 @@ import (
 	"os"
 	"time"
 	"reflect"
+    "path"
 )
 
 type Options struct {
@@ -45,6 +46,7 @@ var options Options
 var parser = flags.NewParser(&options, flags.Default)
 var metadata = &clients.Metadata{}
 var logger *log.Logger
+var LogROOT = "logs"
 var actionMapping = map[string]interface{}{
 	"QUEST":          doQuest,
 	"STATUS":         doStatus,
@@ -74,8 +76,28 @@ func doAction(sectionName string) {
 	}
 }
 
+func initLogFile()(logFile *os.File, err error){
+    logFileName := path.Base(options.ConfigPath)
+    logFilePath := path.Join("logs", logFileName)
+    if _, err := os.Stat(LogROOT); os.IsNotExist(err) {
+        os.Mkdir(LogROOT, 0755)
+    }
+    return os.OpenFile(logFilePath, os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+}
+
 func start() {
-	logger = utils.GetLogger()
+    //logFileName := path.Base(options.ConfigPath)
+    //logFilePath := path.Join("logs", logFileName)
+    //if _, err := os.Stat(LogROOT); os.IsNotExist(err) {
+    //    os.Mkdir(LogROOT, 644)
+    //}
+    //logFile, err  := os.OpenFile(logFilePath, os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+    logFile, err := initLogFile()
+    defer logFile.Close()
+    if err != nil {
+        log.Fatalln("open file error !")
+    }
+	logger = utils.GetLogger(logFile)
 
 	config, err := config.ReadDefault(options.ConfigPath)
 	if err != nil {
@@ -90,11 +112,6 @@ func start() {
 	} else {
 		metadata.DB = db
 	}
-	//card := interface{}
-	//card := models.Charainfo{}
-	//query := bson.M{"title": bson.RegEx{".*公會.*", ""}}
-	//controllers.GeneralQuery(metadata.DB, "charainfo", query, &card)
-	//logger.Printf("%+v", card.Name)
 
 	//utils.DumpConfig(metadata.Config)
 	uid, _ := metadata.Config.String("GENERAL", "Uid")
