@@ -38,6 +38,7 @@ type Options struct {
 	ConfigPath string `short:"c" long:"config" description:"Config path" required:"true"`
 	Action     string `short:"a" long:"action" description:"Action to run" required:"false"`
     Repeat     int `short:"r" long:"repeat" description:"Repeat action for r times" required:"false"`
+    Timeout     int `short:"t" long:"timeout" description:"Timeout in seconds between repeat" required:"false"`
 }
 
 var options Options
@@ -118,10 +119,15 @@ func start() {
 	metadata.Sid = sid
 	//dumpUser(metadata)
 	flowLoop, _ := metadata.Config.Int("GENERAL", "FlowLoop")
+    sleepDuration, _:= metadata.Config.Int("GENERAL", "FlowLoopDelay")
+
 	if options.Repeat > 0{
         flowLoop = options.Repeat
     }
-	sleepDuration, _:= metadata.Config.Int("GENERAL", "FlowLoopDelay")
+    if options.Timeout > 0{
+        sleepDuration = options.Timeout
+    }
+
 	for i := 1; i <= flowLoop; i++ {
 		logger.Printf("Start #%d Flow\n", i)
 		for _, flow := range metadata.Flow {
@@ -133,7 +139,6 @@ func start() {
             time.Sleep(time.Second * time.Duration(sleepDuration))
         }
 	}
-
 }
 
 func doDrama(metadata *clients.Metadata, section string) {
