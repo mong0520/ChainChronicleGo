@@ -30,16 +30,16 @@ import (
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"os"
-	"time"
+	"path"
 	"reflect"
-    "path"
+	"time"
 )
 
 type Options struct {
 	ConfigPath string `short:"c" long:"config" description:"Config path" required:"true"`
 	Action     string `short:"a" long:"action" description:"Action to run" required:"false"`
-    Repeat     int `short:"r" long:"repeat" description:"Repeat action for r times" required:"false"`
-    Timeout     int `short:"t" long:"timeout" description:"Timeout in seconds between repeat" required:"false"`
+	Repeat     int    `short:"r" long:"repeat" description:"Repeat action for r times" required:"false"`
+	Timeout    int    `short:"t" long:"timeout" description:"Timeout in seconds between repeat" required:"false"`
 }
 
 var options Options
@@ -76,27 +76,22 @@ func doAction(sectionName string) {
 	}
 }
 
-func initLogFile()(logFile *os.File, err error){
-    logFileName := path.Base(options.ConfigPath)
-    logFilePath := path.Join("logs", logFileName)
-    if _, err := os.Stat(LogROOT); os.IsNotExist(err) {
-        os.Mkdir(LogROOT, 0755)
-    }
-    return os.OpenFile(logFilePath, os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+func initLogFile() (logFile *os.File, err error) {
+	logFileName := path.Base(options.ConfigPath)
+	logFilePath := path.Join("logs", logFileName)
+	if _, err := os.Stat(LogROOT); os.IsNotExist(err) {
+		os.Mkdir(LogROOT, 0755)
+	}
+	return os.OpenFile(logFilePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 }
 
 func start() {
-    //logFileName := path.Base(options.ConfigPath)
-    //logFilePath := path.Join("logs", logFileName)
-    //if _, err := os.Stat(LogROOT); os.IsNotExist(err) {
-    //    os.Mkdir(LogROOT, 644)
-    //}
-    //logFile, err  := os.OpenFile(logFilePath, os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
-    logFile, err := initLogFile()
-    defer logFile.Close()
-    if err != nil {
-        log.Fatalln("open file error !")
-    }
+	logFile, err := initLogFile()
+	defer logFile.Close()
+
+	if err != nil {
+		log.Fatalln("open file error !")
+	}
 	logger = utils.GetLogger(logFile)
 
 	config, err := config.ReadDefault(options.ConfigPath)
@@ -122,11 +117,11 @@ func start() {
 	metadata.Token = token
 	if options.Action == "" {
 		flowString, _ := metadata.Config.String("GENERAL", "Flow")
-        flowString = strings.Replace(flowString, " ", "", -1)
+		flowString = strings.Replace(flowString, " ", "", -1)
 		metadata.Flow = strings.Split(flowString, ",")
 	} else {
 		flowString := options.Action
-        flowString = strings.Replace(flowString, " ", "", -1)
+		flowString = strings.Replace(flowString, " ", "", -1)
 		metadata.Flow = strings.Split(flowString, ",")
 	}
 
@@ -134,16 +129,25 @@ func start() {
 	alldata, _ := user.GetAllData(sid)
 	metadata.AllData = alldata
 	metadata.Sid = sid
-	//dumpUser(metadata)
-	flowLoop, _ := metadata.Config.Int("GENERAL", "FlowLoop")
-    sleepDuration, _:= metadata.Config.Int("GENERAL", "FlowLoopDelay")
+	metadata.AllDataS = &models.AllData{}
 
-	if options.Repeat > 0{
-        flowLoop = options.Repeat
-    }
-    if options.Timeout > 0{
-        sleepDuration = options.Timeout
-    }
+	err = utils.Map2Struct(alldata, metadata.AllDataS)
+	if err!= nil {
+		log.Println(err)
+		os.Exit(-1)
+	}else{
+		log.Println(metadata.AllDataS)
+	}
+	dumpUser(metadata)
+	flowLoop, _ := metadata.Config.Int("GENERAL", "FlowLoop")
+	sleepDuration, _ := metadata.Config.Int("GENERAL", "FlowLoopDelay")
+
+	if options.Repeat > 0 {
+		flowLoop = options.Repeat
+	}
+	if options.Timeout >= 0 {
+		sleepDuration = options.Timeout
+	}
 
 	for i := 1; i <= flowLoop; i++ {
 		logger.Printf("Start #%d Flow\n", i)
@@ -151,10 +155,10 @@ func start() {
 			logger.Printf("Current action = [%s]\n", flow)
 			doAction(strings.ToUpper(flow))
 		}
-		if sleepDuration > 0{
-            logger.Println("Waiting", sleepDuration, "seconds")
-            time.Sleep(time.Second * time.Duration(sleepDuration))
-        }
+		if sleepDuration > 0 {
+			logger.Println("Waiting", sleepDuration, "seconds")
+			time.Sleep(time.Second * time.Duration(sleepDuration))
+		}
 	}
 }
 
@@ -345,7 +349,7 @@ func doGacha(metadata *clients.Metadata, section string) {
 			controllers.GeneralQuery(metadata.DB, "charainfo", query, &myCard)
 			//logger.Printf("得到 %d星卡: %s-%s", myCard.Rarity, myCard.Title, myCard.Name)
 			if gachaInfo.AutoSell && myCard.Rarity <= gachaInfo.AutoSellRarityThreshold {
-			    logger.Println("賣出卡片...")
+				logger.Println("賣出卡片...")
 				doSellItem(metadata, card.Idx, "")
 			}
 		}
@@ -391,19 +395,19 @@ func processGachaResult(resp map[string]interface{}) (gachaResult map[string]int
 			//logger.Println(i, "得到角色")
 			list := data.(map[string]interface{})["data"].([]interface{})
 			for _, item := range list {
-                tmpItem := &models.GachaResultChara{}
-                tmpDBItem := &models.Charainfo{}
-                if err := utils.Map2Struct(item.(map[string]interface{}), tmpItem); err != nil {
-                    logger.Println("Unable to convert to struct", err)
-                } else {
-                    query := bson.M{"cid": tmpItem.ID}
-                    if err := controllers.GeneralQuery(metadata.DB, "charainfo", query, tmpDBItem); err!=nil{
-                        logger.Println(i, "得到", tmpItem.ID)
-                    }else{
-                        logger.Printf("得到 %d星卡: %s-%s", tmpDBItem.Rarity, tmpDBItem.Title, tmpDBItem.Name)
-                    }
-                    charList = append(charList, *tmpItem)
-                }
+				tmpItem := &models.GachaResultChara{}
+				tmpDBItem := &models.Charainfo{}
+				if err := utils.Map2Struct(item.(map[string]interface{}), tmpItem); err != nil {
+					logger.Println("Unable to convert to struct", err)
+				} else {
+					query := bson.M{"cid": tmpItem.ID}
+					if err := controllers.GeneralQuery(metadata.DB, "charainfo", query, tmpDBItem); err != nil {
+						logger.Println(i, "得到", tmpItem.ID)
+					} else {
+						logger.Printf("得到 %d星卡: %s-%s", tmpDBItem.Rarity, tmpDBItem.Title, tmpDBItem.Name)
+					}
+					charList = append(charList, *tmpItem)
+				}
 			}
 		case 2:
 			//logger.Println(i, "得到成長卡/冶鍊卡", data)
@@ -431,11 +435,11 @@ func processGachaResult(resp map[string]interface{}) (gachaResult map[string]int
 					logger.Println("Unable to convert to struct", err)
 				} else {
 					query := bson.M{"id": tmpItem.ItemID}
-					if err := controllers.GeneralQuery(metadata.DB, "evolve", query, tmpDBItem); err!=nil{
-                        logger.Println(i, "得到", tmpItem.ItemID)
-                    }else{
-                        logger.Println(i, "得到", tmpDBItem.Name)
-                    }
+					if err := controllers.GeneralQuery(metadata.DB, "evolve", query, tmpDBItem); err != nil {
+						logger.Println(i, "得到", tmpItem.ItemID)
+					} else {
+						logger.Println(i, "得到", tmpDBItem.Name)
+					}
 					weaponList = append(weaponList, *tmpItem)
 				}
 			}
@@ -457,9 +461,8 @@ func doDebug(metadata *clients.Metadata, section string) {
 }
 
 func doUpdateDB(metadata *clients.Metadata, section string) {
-    controllers.UpdateDB(metadata)
+	controllers.UpdateDB(metadata)
 }
-
 
 func getPresents(metadata *clients.Metadata) {
 	if presents, res := present.GetPresnetList(metadata.Sid); res == 0 {
@@ -540,32 +543,32 @@ func doTakeOver(metadata *clients.Metadata, section string) {
 func doStatus(metadata *clients.Metadata, section string) {
 	targets := []string{"comment", "uid", "heroName", "open_id", "lv", "cardMax", "accept_disciple", "name",
 		"friendCnt", "only_friend_disciple", "staminaMax", "zuLastRefilledScheduleId", "uzu_key"}
-    itemMapping := map[int]string{
-        7: "轉蛋卷",
-        10: "金幣",
-        11: "聖靈幣",
-        13: "戒指",
-        15: "賭場幣",
-        20: "轉蛋幣",
-    }
-    specialData := metadata.AllData["body"].([]interface{})[8].(map[string]interface{})["data"]
-    for _, item := range specialData.([]interface{}){
-        itemId := item.(map[string]interface{})["item_id"]
+	itemMapping := map[int]string{
+		7:  "轉蛋卷",
+		10: "金幣",
+		11: "聖靈幣",
+		13: "戒指",
+		15: "賭場幣",
+		20: "轉蛋幣",
+	}
+	specialData := metadata.AllData["body"].([]interface{})[8].(map[string]interface{})["data"]
+	for _, item := range specialData.([]interface{}) {
+		itemId := item.(map[string]interface{})["item_id"]
 		cnt := item.(map[string]interface{})["cnt"]
 		//logger.Println(itemId, reflect.TypeOf(itemId))
 		//logger.Println(cnt, reflect.TypeOf(cnt))
-        //fmt.Println(itemId)
-        if val, ok := itemMapping[int(itemId.(float64))]; ok{
-        	switch reflect.TypeOf(cnt).Kind(){
+		//fmt.Println(itemId)
+		if val, ok := itemMapping[int(itemId.(float64))]; ok {
+			switch reflect.TypeOf(cnt).Kind() {
 			case reflect.String:
 				logger.Printf("%s = %s\n", val, cnt.(string))
 			case reflect.Float64:
 				logger.Printf("%s = %.0f\n", val, cnt.(float64))
 			}
 
-        }
+		}
 
-    }
+	}
 	userData := metadata.AllData["body"].([]interface{})[4].(map[string]interface{})["data"]
 	//logger.Println(utils.Map2JsonString(metadata.AllData))
 	for k, v := range userData.(map[string]interface{}) {
@@ -641,6 +644,7 @@ func doQuest(metadata *clients.Metadata, section string) {
 			break
 		}
 		resp, res = questInfo.EndQeust(metadata)
+		//fmt.Println(utils.Map2JsonString(resp))
 		switch res {
 		case 0:
 			logger.Println("關卡完成")
