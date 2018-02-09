@@ -13,19 +13,35 @@ import (
     "net/http"
     "strings"
     "io/ioutil"
+    "errors"
+    "golang.org/x/net/proxy"
+    "os"
 )
 
 var API = "session/login"
 
-func Login(uid string, token string) (sid string) {
+type MyError struct{
+    Msg string
+}
+
+func Error(){
+
+}
+
+func Login(uid string, token string, useProxy bool) (sid string, err error) {
     //logger := utils.GetLogger()
     requestUrl := GetEndpoint()
     postBody := GetPostBody(uid, token)
-    resp, _ := post(requestUrl, postBody)
+    resp, _ := post(requestUrl, postBody, useProxy)
 
     //fmt.Printf("Response = %v\n", utils.Map2JsonString(resp))
-    sid = resp["login"].(map[string]interface{})["sid"].(string)
-    return sid
+    if _, ok := resp["login"]; ok{
+        sid = resp["login"].(map[string]interface{})["sid"].(string)
+        return sid, nil
+    }else{
+        return "", errors.New(fmt.Sprintf("%s: %+v\n", "Login failed", resp))
+    }
+
 }
 
 
@@ -52,7 +68,20 @@ func GetPostBody(uid string, token string)(body map[string]interface{}){
     return body
 }
 
-func post(requestUrl string, body map[string]interface{}) (respMap map[string]interface{}, err error){
+func post(requestUrl string, body map[string]interface{}, useProxy bool) (respMap map[string]interface{}, err error){
+
+    // create a socks5 dialer
+    dialer, err := proxy.SOCKS5("tcp", "127.0.0.1:9150", nil, proxy.Direct)
+    if err != nil {
+        fmt.Fprintln(os.Stderr, "can't connect to the proxy:", err)
+        os.Exit(1)
+    }
+    // setup a http client
+    httpTransport := &http.Transport{}
+    //httpClient := &http.Client{Transport: httpTransport}
+    // set our socks5 as the dialer
+    httpTransport.Dial = dialer.Dial
+
 
     //nowShort := strconv.Itoa(int(time.Now().Unix()))
     nowLong := strconv.Itoa(int(time.Now().UnixNano()))
@@ -80,6 +109,17 @@ func post(requestUrl string, body map[string]interface{}) (respMap map[string]in
         return nil, err
     }
     c := &http.Client{}
+    switch useProxy{
+    case true:
+        fmt.Println("Use socks proxy")
+        c = &http.Client{Transport: httpTransport}
+    case false:
+        c = &http.Client{}
+    default:
+        c = &http.Client{}
+    }
+    //c := &http.Client{Transport: httpTransport}
+    //c := &http.Client{}
     resp, err := c.Do(req)
     if err != nil {
         fmt.Printf("http.Do() error: %v\n", err)

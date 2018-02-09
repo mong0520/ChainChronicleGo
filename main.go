@@ -108,6 +108,7 @@ func start() {
 		metadata.DB = db
 	}
 
+
 	//utils.DumpConfig(metadata.Config)
 	uid, _ := metadata.Config.String("GENERAL", "Uid")
 	metadata.Uid = uid
@@ -125,20 +126,24 @@ func start() {
 		metadata.Flow = strings.Split(flowString, ",")
 	}
 
-	sid := session.Login(uid, token)
+	sid, err := session.Login(uid, token, false)
+	if err != nil{
+		log.Printf("%s\n", err)
+		return
+	}
 	alldata, _ := user.GetAllData(sid)
 	metadata.AllData = alldata
 	metadata.Sid = sid
-	metadata.AllDataS = &models.AllData{}
-
-	err = utils.Map2Struct(alldata, metadata.AllDataS)
-	if err!= nil {
-		log.Println(err)
-		os.Exit(-1)
-	}else{
-		log.Println(metadata.AllDataS)
-	}
-	dumpUser(metadata)
+	//metadata.AllDataS = &models.AllData{}
+    //
+	//err = utils.Map2Struct(alldata, metadata.AllDataS)
+	//if err!= nil {
+	//	log.Println(err)
+	//	os.Exit(-1)
+	//}else{
+	//	log.Println(metadata.AllDataS)
+	//}
+	//dumpUser(metadata)
 	flowLoop, _ := metadata.Config.Int("GENERAL", "FlowLoop")
 	sleepDuration, _ := metadata.Config.Int("GENERAL", "FlowLoopDelay")
 
@@ -286,7 +291,14 @@ func doTutorial(metadata *clients.Metadata, section string) {
 	newUid := fmt.Sprintf("ANDO%s", uuid.Must(uuid.NewV4()).String())
 	logger.Printf("New UUID = %s", newUid)
 	// set tor proxy
-	sid := session.Login(newUid, "")
+	sid, err := session.Login(newUid, "", false)
+	if err != nil{
+		log.Printf("無法建立新帳號，嘗試使用 TOR...\n",)
+		if sid, err = session.Login(newUid, "", true); err != nil{
+			log.Printf("建立帳號失敗 %s\n", err)
+			os.Exit(1)
+		}
+	}
 	metadata.Uid = newUid
 	//logger.Println(uid)
 	token, _ := metadata.Config.String("GENERAL", "Token")
@@ -494,26 +506,47 @@ func doBuy(metadata *clients.Metadata, section string) {
 }
 
 func doShowChars(metadata *clients.Metadata, section string) {
+	autoCompose, _ := metadata.Config.Bool("GENERAL", "AutoCompose")
+
 	chars, _ := dyno.GetSlice(metadata.AllData, "body", 6, "data")
 	threshold := 5
 	//logger.Println(chars)
-	for i, c := range chars {
-		card := &models.Charainfo{}     // for mongodb result
+	for _, c := range chars {
+		cardInfo := &models.Charainfo{}     // for mongodb result
 		charData := &models.CharaData{} // for alldata structure
 		utils.Map2Struct(c.(map[string]interface{}), charData)
 		if charData.Type != 0 {
-			continue // non-char cards
+			continue // non-char
 		}
 		query := bson.M{"cid": charData.ID}
-		if err := controllers.GeneralQuery(metadata.DB, "charainfo", query, &card); err != nil {
+		if err := controllers.GeneralQuery(metadata.DB, "charainfo", query, &cardInfo); err != nil {
 			logger.Println(charData.ID)
 		} else {
-			if card.Rarity >= threshold {
-				logger.Printf("%d, %s-%s, 目前等級: %d", i+1, card.Title, card.Name, charData.Lv)
+			if cardInfo.Rarity >= threshold {
+				logger.Printf("%d, %s-%s, 目前等級: %d, 界限突破:%d",
+					cardInfo.Cid, cardInfo.Title, cardInfo.Name, charData.Lv, charData.LimitBreak)
+				if autoCompose == false{
+					continue
+				}
+				for charData.Lv < charData.Maxlv {
+					if ret, err := card.Compose(metadata, charData.Idx, 0); err == 0{
+						//log.Println(utils.Map2JsonString(res), err)
+						lv, _ := dyno.GetFloat64(ret, "base_card", "lv")
+						maxLv, _ := dyno.GetFloat64(ret, "base_card", "maxlv")
+						log.Printf("目前進度 %.0f/%0.f\n", lv, maxLv)
+						charData.Lv = int(lv)
+						charData.Maxlv = int(maxLv)
+						//os.Exit(0)
+					}else{
+						log.Printf("Unable to compose: %s\n", utils.Map2JsonString(ret))
+						return
+					}
+				}
 			}
 		}
 	}
 }
+
 
 func doPassword(metadata *clients.Metadata, section string) {
 	tempPassword := "aaa123"
