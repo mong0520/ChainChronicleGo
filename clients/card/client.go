@@ -19,7 +19,7 @@ func Sell(u *clients.Metadata, cid int) (resp map[string]interface{}, res int) {
 func Compose(metadata *clients.Metadata, baseId int, expup_id int) (respMap map[string]interface{}, res int) {
     api := "card/compose"
     im := map[string]int{
-        "90904": 10,
+        "90904": 10,  // 四星成長卡
     }
 
     imString, _ := json.Marshal(im)
