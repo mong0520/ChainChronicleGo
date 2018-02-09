@@ -23,10 +23,6 @@ func Compose(metadata *clients.Metadata, baseId int, expup_id int) (respMap map[
     }
 
     imString, _ := json.Marshal(im)
-    //fmt.Println(string(imString))
-
-    //imMap, _ := json.Marshal(im)
-    //fmt.Println(string(imMap))
     param := map[string]interface{}{
         "ba": baseId,
         "im": string(imString),

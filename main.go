@@ -583,6 +583,7 @@ func doStatus(metadata *clients.Metadata, section string) {
 		13: "戒指",
 		15: "賭場幣",
 		20: "轉蛋幣",
+		39: "幸運球",
 	}
 	specialData := metadata.AllData["body"].([]interface{})[8].(map[string]interface{})["data"]
 	for _, item := range specialData.([]interface{}) {
