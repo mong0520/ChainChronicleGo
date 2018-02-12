@@ -33,7 +33,10 @@ import (
 	"path"
 	"reflect"
 	"time"
+	"github.com/mong0520/ChainChronicleGo/clients/explorer"
+	"strconv"
 )
+
 
 type Options struct {
 	ConfigPath string `short:"c" long:"config" description:"Config path" required:"true"`
@@ -64,6 +67,7 @@ var actionMapping = map[string]interface{}{
 	"TEACHER":        doTeacher,
 	"DISCIPLE":       doDisciple,
 	"UPDATE":         doUpdateDB,
+	"EXPLORER":       doExplorer,
 }
 
 func doAction(sectionName string) {
@@ -90,7 +94,7 @@ func start() {
 	defer logFile.Close()
 
 	if err != nil {
-		log.Fatalln("open file error !")
+		logger.Fatalln("open file error !")
 	}
 	logger = utils.GetLogger(logFile)
 
@@ -128,7 +132,7 @@ func start() {
 
 	sid, err := session.Login(uid, token, false)
 	if err != nil{
-		log.Printf("%s\n", err)
+		logger.Printf("%s\n", err)
 		return
 	}
 	alldata, _ := user.GetAllData(sid)
@@ -378,6 +382,154 @@ func doSellItem(metadata *clients.Metadata, cid int, section string) {
 		logger.Println("\t-> 賣出卡片成功")
 	}
 }
+
+func doExplorer(metadata *clients.Metadata, section string) {
+	metadata.ExplorerExcludeCids = []int{2007}
+	explorerList, _ := explorer.GetExplorerList(metadata.Sid)
+	pickup, _ := dyno.GetSlice(explorerList, "pickup")
+	//log.Printf("%s\n", utils.Map2JsonString(explorerList))
+	log.Printf("%v\n", pickup)
+	pickupList := []explorer.Pickup{}
+
+	for _, p := range pickup{
+		pickupItem := &explorer.Pickup{}
+		utils.Map2Struct(p.(map[string]interface{}), pickupItem)
+		pickupList = append(pickupList, *pickupItem)
+	}
+	//for _, pickupIteam := range pickupList{
+	//	log.Printf("%+v\n", pickupIteam)
+	//}
+	useStone, _ := metadata.Config.Bool(section, "StoneFinish")
+	explorerAreaStr, _ := metadata.Config.String(section, "area")
+	explorerAreas := strings.Split(explorerAreaStr, ",")
+	setCharaData()
+	for i, e := range explorerAreas{
+		area, _ := strconv.Atoi(e)
+		resp, err := explorer.GetExplorerResult(metadata.Sid, i+1)
+		switch err{
+			case 0, 2308:
+				logger.Println("可以開始探索")
+
+			case 2302:
+				logger.Println("探索尚未結束")
+				logger.Printf("Use stone to finish? %t\n", useStone)
+				if useStone{
+					explorer.FinishExplorer(metadata.Sid, i+1)
+					//logger.Println(utils.Map2JsonString(resp))
+
+					resp, _ = explorer.GetExplorerResult(metadata.Sid, i+1)
+					//logger.Println(utils.Map2JsonString(resp))
+
+					rewards, _ := dyno.GetSlice(resp, "explorer_reward")
+					for _, reward := range rewards{
+						//logger.Println(reward)
+						rewardItem := reward.(map[string]interface{})["item_id"].(float64)
+						rewardType := reward.(map[string]interface{})["item_type"].(string)
+						//logger.Println("Reward Type ", rewardType)
+						if rewardType == "card"{
+							tmpCardInfo := &models.Charainfo{}     // for mongodb result
+							cid := int(rewardItem)
+							logger.Println("cid =", cid)
+							query := bson.M{"cid": cid}
+							if err := controllers.GeneralQuery(metadata.DB, "charainfo", query, &tmpCardInfo); err != nil {
+								logger.Println("得到角色", rewardItem, err)
+							} else {
+								logger.Println("得到",tmpCardInfo.Rarity,"星角色", tmpCardInfo.Name)
+								if tmpCardInfo.Rarity >= 5{
+									os.Exit(0)
+								}
+							}
+						}else{
+							//logger.Println("得到ID", rewardItem)
+						}
+					}
+				}
+			case 1:
+				logger.Println("已被登出")
+			default:
+				logger.Println("未知的結果")
+				logger.Println(resp)
+		}
+		for _, pickupItem := range pickupList{
+			if pickupItem.LocationID == area{
+				logger.Printf("Start to find best card to explorer area %d\n", pickupItem.LocationID)
+				result := findBestCardToExplorer(&pickupItem)
+				fmt.Println(area)
+				param := map[string]int{
+					"explorer_idx": i+1,
+					"location_id": area,
+					"card_idx": result["idx"],
+					"pickup": 1,
+					"interval": 2,
+				}
+				resp, err := explorer.StartExplorer(metadata.Sid, param)
+				switch err{
+				case 0:
+					break
+				case 2311:
+					param["pickup"] = 0
+					explorer.StartExplorer(metadata.Sid, param)
+				default:
+					logger.Printf("%s\n", utils.Map2JsonString(resp))
+				}
+			}
+		}
+	}
+}
+
+func setCharaData(){
+	chars, _ := dyno.GetSlice(metadata.AllData, "body", 6, "data")
+	charaInfo := []models.Charainfo{}     // for mongodb result
+	charaData := []models.CharaData{} // for alldata structure
+	for _, c := range chars {
+		tmpCardInfo := &models.Charainfo{}     // for mongodb result
+		tmpCharData := &models.CharaData{} // for alldata structure
+		utils.Map2Struct(c.(map[string]interface{}), tmpCharData)
+		if tmpCharData.Type != 0{
+			continue
+		}
+		query := bson.M{"cid": tmpCharData.ID}
+		if err := controllers.GeneralQuery(metadata.DB, "charainfo", query, &tmpCardInfo); err != nil {
+			logger.Println(tmpCharData.ID, err)
+		} else {
+			charaInfo = append(charaInfo, *tmpCardInfo)
+			charaData = append(charaData, *tmpCharData)
+		}
+	}
+	if metadata.CharInfo == nil{
+		metadata.CharInfo = charaInfo
+	}
+	if metadata.CharData == nil{
+		metadata.CharData = charaData
+	}
+}
+
+func findBestCardToExplorer(pickupItem *explorer.Pickup)(result map[string]int){
+	result = map[string]int{
+		"cid": 0,
+		"idx": 0,
+	}
+	for idx, charInfo := range metadata.CharInfo {
+		charData := metadata.CharData[idx]
+		if charInfo.Rarity >= 5{
+			// 不使用五星卡探索
+			continue
+		}else if (pickupItem.Home == charInfo.Home) || (pickupItem.Jobtype == charInfo.Jobtype) && !utils.InArray(charInfo.Cid, metadata.ExplorerExcludeCids){
+			// 適合的
+			logger.Printf("Pick %s to explorer, cid = %d, idx = %d, rank = %d", charInfo.Name, charInfo.Cid, charData.Idx, charInfo.Rarity)
+			metadata.ExplorerExcludeCids = append(metadata.ExplorerExcludeCids, charInfo.Cid)
+			result["cid"] = charInfo.Cid
+			result["idx"] = charData.Idx
+			break
+		}else{
+			// 找不到適合的
+			result["cid"] = charInfo.Cid
+			result["idx"] = charData.Idx
+		}
+	}
+	return result
+}
+
 func processGachaResult(resp map[string]interface{}) (gachaResult map[string]interface{}) {
 	gachaData, _ := dyno.GetSlice(resp, "body")
 	//logger.Println(utils.Map2JsonString(resp))
@@ -533,12 +685,12 @@ func doShowChars(metadata *clients.Metadata, section string) {
 						//log.Println(utils.Map2JsonString(res), err)
 						lv, _ := dyno.GetFloat64(ret, "base_card", "lv")
 						maxLv, _ := dyno.GetFloat64(ret, "base_card", "maxlv")
-						log.Printf("目前進度 %.0f/%0.f\n", lv, maxLv)
+						logger.Printf("目前進度 %.0f/%0.f\n", lv, maxLv)
 						charData.Lv = int(lv)
 						charData.Maxlv = int(maxLv)
 						//os.Exit(0)
 					}else{
-						log.Printf("Unable to compose: %s\n", utils.Map2JsonString(ret))
+						logger.Printf("Unable to compose: %s\n", utils.Map2JsonString(ret))
 						return
 					}
 				}
