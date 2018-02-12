@@ -15,6 +15,9 @@ type Metadata struct {
     AllData map[string]interface{}
     AllDataS *models.AllData
     DB *mgo.Session
+    CharInfo []models.Charainfo
+    CharData []models.CharaData
+    ExplorerExcludeCids []int
 }
 
 
