@@ -17,6 +17,7 @@ import (
 	"github.com/icza/dyno"
 	"github.com/jessevdk/go-flags"
 	"github.com/mong0520/ChainChronicleGo/clients/card"
+	"github.com/mong0520/ChainChronicleGo/clients/explorer"
 	"github.com/mong0520/ChainChronicleGo/clients/gacha"
 	"github.com/mong0520/ChainChronicleGo/clients/general"
 	"github.com/mong0520/ChainChronicleGo/clients/present"
@@ -32,11 +33,9 @@ import (
 	"os"
 	"path"
 	"reflect"
-	"time"
-	"github.com/mong0520/ChainChronicleGo/clients/explorer"
 	"strconv"
+	"time"
 )
-
 
 type Options struct {
 	ConfigPath string `short:"c" long:"config" description:"Config path" required:"true"`
@@ -112,7 +111,6 @@ func start() {
 		metadata.DB = db
 	}
 
-
 	//utils.DumpConfig(metadata.Config)
 	uid, _ := metadata.Config.String("GENERAL", "Uid")
 	metadata.Uid = uid
@@ -131,7 +129,7 @@ func start() {
 	}
 
 	sid, err := session.Login(uid, token, false)
-	if err != nil{
+	if err != nil {
 		logger.Printf("%s\n", err)
 		return
 	}
@@ -139,7 +137,7 @@ func start() {
 	metadata.AllData = alldata
 	metadata.Sid = sid
 	//metadata.AllDataS = &models.AllData{}
-    //
+	//
 	//err = utils.Map2Struct(alldata, metadata.AllDataS)
 	//if err!= nil {
 	//	log.Println(err)
@@ -296,9 +294,9 @@ func doTutorial(metadata *clients.Metadata, section string) {
 	logger.Printf("New UUID = %s", newUid)
 	// set tor proxy
 	sid, err := session.Login(newUid, "", false)
-	if err != nil{
-		log.Printf("無法建立新帳號，嘗試使用 TOR...\n",)
-		if sid, err = session.Login(newUid, "", true); err != nil{
+	if err != nil {
+		log.Printf("無法建立新帳號，嘗試使用 TOR...\n")
+		if sid, err = session.Login(newUid, "", true); err != nil {
 			log.Printf("建立帳號失敗 %s\n", err)
 			os.Exit(1)
 		}
@@ -350,7 +348,7 @@ func doTutorial(metadata *clients.Metadata, section string) {
 		}
 	}
 	logger.Printf("新帳號完成新手教學, UID = %s, OpenID = %.0f\n", newUid, openId)
-	getPresents(metadata)
+	getPresents(metadata, nil)
 }
 
 func doGacha(metadata *clients.Metadata, section string) {
@@ -384,14 +382,16 @@ func doSellItem(metadata *clients.Metadata, cid int, section string) {
 }
 
 func doExplorer(metadata *clients.Metadata, section string) {
+	getPresents(metadata, []string{"card"})
+	setCharaData()
 	metadata.ExplorerExcludeCids = []int{2007}
 	explorerList, _ := explorer.GetExplorerList(metadata.Sid)
 	pickup, _ := dyno.GetSlice(explorerList, "pickup")
 	//log.Printf("%s\n", utils.Map2JsonString(explorerList))
-	log.Printf("%v\n", pickup)
+	//log.Printf("%v\n", pickup)
 	pickupList := []explorer.Pickup{}
 
-	for _, p := range pickup{
+	for _, p := range pickup {
 		pickupItem := &explorer.Pickup{}
 		utils.Map2Struct(p.(map[string]interface{}), pickupItem)
 		pickupList = append(pickupList, *pickupItem)
@@ -402,68 +402,67 @@ func doExplorer(metadata *clients.Metadata, section string) {
 	useStone, _ := metadata.Config.Bool(section, "StoneFinish")
 	explorerAreaStr, _ := metadata.Config.String(section, "area")
 	explorerAreas := strings.Split(explorerAreaStr, ",")
-	setCharaData()
-	for i, e := range explorerAreas{
+
+	for i, e := range explorerAreas {
 		area, _ := strconv.Atoi(e)
 		resp, err := explorer.GetExplorerResult(metadata.Sid, i+1)
-		switch err{
-			case 0, 2308:
-				logger.Println("可以開始探索")
+		switch err {
+		case 0, 2308:
+			logger.Println("可以開始探索")
 
-			case 2302:
-				logger.Println("探索尚未結束")
-				logger.Printf("Use stone to finish? %t\n", useStone)
-				if useStone{
-					explorer.FinishExplorer(metadata.Sid, i+1)
-					//logger.Println(utils.Map2JsonString(resp))
+		case 2302:
+			logger.Println("探索尚未結束")
+			logger.Printf("Use stone to finish? %t\n", useStone)
+			if useStone {
+				explorer.FinishExplorer(metadata.Sid, i+1)
+				//logger.Println(utils.Map2JsonString(resp))
 
-					resp, _ = explorer.GetExplorerResult(metadata.Sid, i+1)
-					//logger.Println(utils.Map2JsonString(resp))
+				resp, _ = explorer.GetExplorerResult(metadata.Sid, i+1)
+				//logger.Println(utils.Map2JsonString(resp))
 
-					rewards, _ := dyno.GetSlice(resp, "explorer_reward")
-					for _, reward := range rewards{
-						//logger.Println(reward)
-						rewardItem := reward.(map[string]interface{})["item_id"].(float64)
-						rewardType := reward.(map[string]interface{})["item_type"].(string)
-						//logger.Println("Reward Type ", rewardType)
-						if rewardType == "card"{
-							tmpCardInfo := &models.Charainfo{}     // for mongodb result
-							cid := int(rewardItem)
-							logger.Println("cid =", cid)
-							query := bson.M{"cid": cid}
-							if err := controllers.GeneralQuery(metadata.DB, "charainfo", query, &tmpCardInfo); err != nil {
-								logger.Println("得到角色", rewardItem, err)
-							} else {
-								logger.Println("得到",tmpCardInfo.Rarity,"星角色", tmpCardInfo.Name)
-								if tmpCardInfo.Rarity >= 5{
-									os.Exit(0)
-								}
+				rewards, _ := dyno.GetSlice(resp, "explorer_reward")
+				for _, reward := range rewards {
+					//logger.Println(reward)
+					rewardItem := reward.(map[string]interface{})["item_id"].(float64)
+					rewardType := reward.(map[string]interface{})["item_type"].(string)
+					//logger.Println("Reward Type ", rewardType)
+					if rewardType == "card" {
+						tmpCardInfo := &models.Charainfo{} // for mongodb result
+						cid := int(rewardItem)
+						//logger.Println("cid =", cid)
+						query := bson.M{"cid": cid}
+						if err := controllers.GeneralQuery(metadata.DB, "charainfo", query, &tmpCardInfo); err != nil {
+							logger.Println("得到角色", rewardItem, err)
+						} else {
+							logger.Println("得到", tmpCardInfo.Rarity, "星角色", tmpCardInfo.Name)
+							if tmpCardInfo.Cid == 6248 {
+								os.Exit(0)
 							}
-						}else{
-							//logger.Println("得到ID", rewardItem)
 						}
+					} else {
+						//logger.Println("得到ID", rewardItem)
 					}
 				}
-			case 1:
-				logger.Println("已被登出")
-			default:
-				logger.Println("未知的結果")
-				logger.Println(resp)
+			}
+		case 1:
+			logger.Println("已被登出")
+		default:
+			logger.Println("未知的結果")
+			logger.Println(resp)
 		}
-		for _, pickupItem := range pickupList{
-			if pickupItem.LocationID == area{
-				logger.Printf("Start to find best card to explorer area %d\n", pickupItem.LocationID)
+		for _, pickupItem := range pickupList {
+			if pickupItem.LocationID == area {
+				//logger.Printf("Start to find best card to explorer area %d\n", pickupItem.LocationID)
 				result := findBestCardToExplorer(&pickupItem)
-				fmt.Println(area)
 				param := map[string]int{
-					"explorer_idx": i+1,
-					"location_id": area,
-					"card_idx": result["idx"],
-					"pickup": 1,
-					"interval": 2,
+					"explorer_idx": i + 1,
+					"location_id":  area,
+					"card_idx":     result["idx"],
+					"pickup":       1,
+					"interval":     2,
 				}
 				resp, err := explorer.StartExplorer(metadata.Sid, param)
-				switch err{
+				switch err {
 				case 0:
 					break
 				case 2311:
@@ -477,15 +476,15 @@ func doExplorer(metadata *clients.Metadata, section string) {
 	}
 }
 
-func setCharaData(){
+func setCharaData() {
 	chars, _ := dyno.GetSlice(metadata.AllData, "body", 6, "data")
-	charaInfo := []models.Charainfo{}     // for mongodb result
+	charaInfo := []models.Charainfo{} // for mongodb result
 	charaData := []models.CharaData{} // for alldata structure
 	for _, c := range chars {
-		tmpCardInfo := &models.Charainfo{}     // for mongodb result
+		tmpCardInfo := &models.Charainfo{} // for mongodb result
 		tmpCharData := &models.CharaData{} // for alldata structure
 		utils.Map2Struct(c.(map[string]interface{}), tmpCharData)
-		if tmpCharData.Type != 0{
+		if tmpCharData.Type != 0 {
 			continue
 		}
 		query := bson.M{"cid": tmpCharData.ID}
@@ -496,32 +495,32 @@ func setCharaData(){
 			charaData = append(charaData, *tmpCharData)
 		}
 	}
-	if metadata.CharInfo == nil{
+	if metadata.CharInfo == nil {
 		metadata.CharInfo = charaInfo
 	}
-	if metadata.CharData == nil{
+	if metadata.CharData == nil {
 		metadata.CharData = charaData
 	}
 }
 
-func findBestCardToExplorer(pickupItem *explorer.Pickup)(result map[string]int){
+func findBestCardToExplorer(pickupItem *explorer.Pickup) (result map[string]int) {
 	result = map[string]int{
 		"cid": 0,
 		"idx": 0,
 	}
 	for idx, charInfo := range metadata.CharInfo {
 		charData := metadata.CharData[idx]
-		if charInfo.Rarity >= 5{
+		if charInfo.Rarity >= 5 {
 			// 不使用五星卡探索
 			continue
-		}else if (pickupItem.Home == charInfo.Home) || (pickupItem.Jobtype == charInfo.Jobtype) && !utils.InArray(charInfo.Cid, metadata.ExplorerExcludeCids){
+		} else if ((pickupItem.Home == charInfo.Home) || (pickupItem.Jobtype == charInfo.Jobtype)) && !utils.InArray(charInfo.Cid, metadata.ExplorerExcludeCids) {
 			// 適合的
-			logger.Printf("Pick %s to explorer, cid = %d, idx = %d, rank = %d", charInfo.Name, charInfo.Cid, charData.Idx, charInfo.Rarity)
+			logger.Printf("Pick %s to explorer, cid = %d, idx = %d, rank = %d\n", charInfo.Name, charInfo.Cid, charData.Idx, charInfo.Rarity)
 			metadata.ExplorerExcludeCids = append(metadata.ExplorerExcludeCids, charInfo.Cid)
 			result["cid"] = charInfo.Cid
 			result["idx"] = charData.Idx
 			break
-		}else{
+		} else {
 			// 找不到適合的
 			result["cid"] = charInfo.Cid
 			result["idx"] = charData.Idx
@@ -628,9 +627,12 @@ func doUpdateDB(metadata *clients.Metadata, section string) {
 	controllers.UpdateDB(metadata)
 }
 
-func getPresents(metadata *clients.Metadata) {
+func getPresents(metadata *clients.Metadata, excludeTypes []string) {
 	if presents, res := present.GetPresnetList(metadata.Sid); res == 0 {
 		for _, p := range presents.Data {
+			if utils.InArray(p.Data.Type, excludeTypes) {
+				continue
+			}
 			if _, err := present.ReceievePresent(p.Idx, metadata.Sid); err == 0 {
 				logger.Printf("-> 接收禮物 {%+v}\n", p)
 			} else {
@@ -664,7 +666,7 @@ func doShowChars(metadata *clients.Metadata, section string) {
 	threshold := 5
 	//logger.Println(chars)
 	for _, c := range chars {
-		cardInfo := &models.Charainfo{}     // for mongodb result
+		cardInfo := &models.Charainfo{} // for mongodb result
 		charData := &models.CharaData{} // for alldata structure
 		utils.Map2Struct(c.(map[string]interface{}), charData)
 		if charData.Type != 0 {
@@ -677,11 +679,11 @@ func doShowChars(metadata *clients.Metadata, section string) {
 			if cardInfo.Rarity >= threshold {
 				logger.Printf("%d, %s-%s, 目前等級: %d, 界限突破:%d",
 					cardInfo.Cid, cardInfo.Title, cardInfo.Name, charData.Lv, charData.LimitBreak)
-				if autoCompose == false{
+				if autoCompose == false {
 					continue
 				}
 				for charData.Lv < charData.Maxlv {
-					if ret, err := card.Compose(metadata, charData.Idx, 0); err == 0{
+					if ret, err := card.Compose(metadata, charData.Idx, 0); err == 0 {
 						//log.Println(utils.Map2JsonString(res), err)
 						lv, _ := dyno.GetFloat64(ret, "base_card", "lv")
 						maxLv, _ := dyno.GetFloat64(ret, "base_card", "maxlv")
@@ -689,7 +691,7 @@ func doShowChars(metadata *clients.Metadata, section string) {
 						charData.Lv = int(lv)
 						charData.Maxlv = int(maxLv)
 						//os.Exit(0)
-					}else{
+					} else {
 						logger.Printf("Unable to compose: %s\n", utils.Map2JsonString(ret))
 						return
 					}
@@ -698,7 +700,6 @@ func doShowChars(metadata *clients.Metadata, section string) {
 		}
 	}
 }
-
 
 func doPassword(metadata *clients.Metadata, section string) {
 	tempPassword := "aaa123"
@@ -738,6 +739,8 @@ func doStatus(metadata *clients.Metadata, section string) {
 		39: "幸運球",
 	}
 	specialData := metadata.AllData["body"].([]interface{})[8].(map[string]interface{})["data"]
+	stoneCount := metadata.AllData["body"].([]interface{})[12].(map[string]interface{})["data"]
+	logger.Printf("精靈石 = %.0f\n", stoneCount.(float64))
 	for _, item := range specialData.([]interface{}) {
 		itemId := item.(map[string]interface{})["item_id"]
 		cnt := item.(map[string]interface{})["cnt"]
@@ -751,10 +754,9 @@ func doStatus(metadata *clients.Metadata, section string) {
 			case reflect.Float64:
 				logger.Printf("%s = %.0f\n", val, cnt.(float64))
 			}
-
 		}
-
 	}
+
 	userData := metadata.AllData["body"].([]interface{})[4].(map[string]interface{})["data"]
 	//logger.Println(utils.Map2JsonString(metadata.AllData))
 	for k, v := range userData.(map[string]interface{}) {
