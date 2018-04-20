@@ -48,6 +48,7 @@ type quest struct {
 	D               int
 	S               int
 	Cc              int
+	Oc              int
 }
 
 func (q *quest) StartQeust(u *clients.Metadata) (resp map[string]interface{}, res int) {
@@ -117,6 +118,7 @@ func (q *quest) getPostBody() (body map[string]interface{}) {
 		"fid":   q.Fid,
 		"pt":    q.Pt,
 		"htype": q.Htype,
+		"oc": q.Oc,
 	}
 	if q.Version == 3{
 	    body["lv"] = q.Lv
@@ -131,7 +133,7 @@ func NewQuest() (q *quest) {
 		Htype:   0,
 		Lv:      0,
 		Version: 2,
-		Fid:     1965350,
+		Fid:     229741,
 		Time:    "10.0",
 		Res:     1,
 		Bt:      10,
@@ -140,6 +142,7 @@ func NewQuest() (q *quest) {
 		Cc:      1,
 		D:       1,
 		S:       1,
+		Oc:		 1,
 	}
 	return q
 }
