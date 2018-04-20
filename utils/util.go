@@ -181,15 +181,16 @@ func ParseConfig2Struct(conf *config.Config, section string, data interface{}){
     fields, _ := conf.SectionOptions(section)
     for _, field := range fields {
         strValue, _ := conf.String(section, field)
-        if boolValue, err := strconv.ParseBool(strValue); err == nil {
-            reflections.SetField(data, field, boolValue)
-            continue
-        }
+        //fmt.Println(field, strValue)
         if intValue, err := strconv.Atoi(strValue); err == nil {
             reflections.SetField(data, field, intValue)
             continue
         }
-
+        if boolValue, err := strconv.ParseBool(strValue); err == nil {
+            //fmt.Println("set bool value ", field, strValue)
+            reflections.SetField(data, field, boolValue)
+            continue
+        }
         reflections.SetField(data, field, strValue)
     }
 }
