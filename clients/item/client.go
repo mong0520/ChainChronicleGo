@@ -16,6 +16,7 @@ var WEAPON_BOW = "itm_weapon_bow"
 var WEAPON_MAGIC = "itm_weapon_magic"
 var CHAR = "char"
 var WEAPON = "weapon"
+var CHAR_LB = "char_lb"
 
 var iteaMapping = map[string]interface{}{
 	AP_FRUIT:     map[string]interface{}{"kind": "item", "id": 1, "type": "item", "price": 10, "val": 1},
@@ -23,7 +24,9 @@ var iteaMapping = map[string]interface{}{
 	WEAPON_BOW:   map[string]interface{}{"kind": "item", "id": 96064, "type": "weapon_ev", "price": 10, "val": 1},
 	WEAPON_MAGIC: map[string]interface{}{"kind": "item", "val": 1, "id": 96126, "type": "weapon_ev", "price": 10},
 	CHAR:         map[string]interface{}{"kind": "item", "type": "chara_rf", "price": 30, "val": 1, "id": 90904},
-	WEAPON:       map[string]interface{}{"kind": "item", "price": 30, "val": 1, "id": 93902, "type": "weapon_rf"}}
+	WEAPON:       map[string]interface{}{"kind": "item", "price": 30, "val": 1, "id": 93902, "type": "weapon_rf"},
+	CHAR_LB:      map[string]interface{}{"kind": "item", "price": 50, "val": 1, "id": 99032, "type": "char_lb"},
+}
 
 func BuyItemByType(itemType string, sid string) (resp map[string]interface{}, res int) {
 	requestUrl := fmt.Sprintf("%s/%s", clients.HOST, api)

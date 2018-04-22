@@ -915,6 +915,7 @@ func doDisciple(metadata *clients.Metadata, section string) {
 			logger.Printf("UID %s 無法畢業, res = %s\n", metadata.Uid, utils.Map2JsonString(ret))
 		} else {
 			logger.Printf("UID %s 畢業\n", metadata.Uid)
+            teacher.IS_GRADUATED = false
 		}
 	} else {
 		logger.Printf("UID %s 選擇 %d 為師父", metadata.Uid, teacherId)
