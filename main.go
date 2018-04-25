@@ -912,7 +912,9 @@ func doDisciple(metadata *clients.Metadata, section string) {
 			}
 		}
 		if ret, err := teacher.ThanksGgraduate(metadata); err != 0 {
-			logger.Printf("UID %s 無法畢業, res = %s\n", metadata.Uid, utils.Map2JsonString(ret))
+			logger.Printf("UID %s 無法畢業, res = %s, trying...\n", metadata.Uid, utils.Map2JsonString(ret))
+            time.Sleep(3 * time.Second)
+            teacher.ThanksGgraduate(metadata)
 		} else {
 			logger.Printf("UID %s 畢業\n", metadata.Uid)
             teacher.IS_GRADUATED = false
