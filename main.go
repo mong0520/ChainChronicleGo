@@ -952,9 +952,10 @@ func doResetDisciple(metadata *clients.Metadata, section string) {
 }
 
 func doCompose(metadata *clients.Metadata, section string) {
-	//mockList := []int{96064,96064,96064,96064,96064}
-	//weapon.Compose(metadata, mockList, 14)
-	//os.Exit(0)
+	mockList := []int{26217,26217,26217,26217,26217}
+    ret, _ := weapon.Compose(metadata, mockList, -1)
+    logger.Println(ret)
+    return
 	weaponListRank3 := make([]int, 0)
 	weaponListRank4 := make([]int, 0)
 	weaponBaseRank5Idx := 0
