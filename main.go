@@ -13,6 +13,12 @@ import (
 	"github.com/mong0520/ChainChronicleGo/utils"
 
 	"fmt"
+	"os"
+	"path"
+	"reflect"
+	"strconv"
+	"time"
+
 	"github.com/deckarep/golang-set"
 	"github.com/icza/dyno"
 	"github.com/jessevdk/go-flags"
@@ -30,11 +36,6 @@ import (
 	"github.com/satori/go.uuid"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"os"
-	"path"
-	"reflect"
-	"strconv"
-	"time"
 )
 
 type Options struct {
@@ -67,6 +68,7 @@ var actionMapping = map[string]interface{}{
 	"DISCIPLE":       doDisciple,
 	"UPDATE":         doUpdateDB,
 	"EXPLORER":       doExplorer,
+	"WASTE":          doWasteMoney,
 }
 
 func doAction(sectionName string) {
@@ -381,6 +383,23 @@ func doSellItem(metadata *clients.Metadata, cid int, section string) {
 	}
 }
 
+func doWasteMoney(metadata *clients.Metadata, section string) {
+	// 一次少 9000
+	targetMoney := 150000000
+	targetCount := targetMoney / 9000
+	logger.Println("Target Count =", targetCount)
+	for i := 0; i < targetCount; i++ {
+		logger.Printf("Loop # %d", i)
+		doExplorer(metadata, "EXPLORER")
+		for eid := 1; eid <= 3; eid++ {
+			explorer.CancelExplorer(metadata.Sid, eid)
+		}
+		// if i%10 == 0 {
+		// 	doStatus(metadata, section)
+		// }
+	}
+}
+
 func doExplorer(metadata *clients.Metadata, section string) {
 	getPresents(metadata, []string{"card"})
 	setCharaData()
@@ -402,6 +421,7 @@ func doExplorer(metadata *clients.Metadata, section string) {
 	useStone, _ := metadata.Config.Bool(section, "StoneFinish")
 	explorerAreaStr, _ := metadata.Config.String(section, "area")
 	explorerAreas := strings.Split(explorerAreaStr, ",")
+	mock, _ := metadata.Config.Bool(section, "Mock")
 
 	for i, e := range explorerAreas {
 		area, _ := strconv.Atoi(e)
@@ -453,7 +473,12 @@ func doExplorer(metadata *clients.Metadata, section string) {
 		for _, pickupItem := range pickupList {
 			if pickupItem.LocationID == area {
 				//logger.Printf("Start to find best card to explorer area %d\n", pickupItem.LocationID)
-				result := findBestCardToExplorer(&pickupItem)
+				result := map[string]int{}
+				if mock {
+					result = findBestCardToExplorerMocked(i)
+				} else {
+					result = findBestCardToExplorer(&pickupItem)
+				}
 				param := map[string]int{
 					"explorer_idx": i + 1,
 					"location_id":  area,
@@ -503,6 +528,19 @@ func setCharaData() {
 	}
 }
 
+func findBestCardToExplorerMocked(idx int) (result map[string]int) {
+	result = map[string]int{
+		"cid": 0,
+		"idx": 433731138,
+	}
+
+	results := []map[string]int{
+		{"cid": 0, "idx": 402682419},
+		{"cid": 0, "idx": 421163524},
+		{"cid": 0, "idx": 433731138},
+	}
+	return results[idx]
+}
 func findBestCardToExplorer(pickupItem *explorer.Pickup) (result map[string]int) {
 	result = map[string]int{
 		"cid": 0,
@@ -913,11 +951,11 @@ func doDisciple(metadata *clients.Metadata, section string) {
 		}
 		if ret, err := teacher.ThanksGgraduate(metadata); err != 0 {
 			logger.Printf("UID %s 無法畢業, res = %s, trying...\n", metadata.Uid, utils.Map2JsonString(ret))
-            time.Sleep(3 * time.Second)
-            teacher.ThanksGgraduate(metadata)
+			time.Sleep(3 * time.Second)
+			teacher.ThanksGgraduate(metadata)
 		} else {
 			logger.Printf("UID %s 畢業\n", metadata.Uid)
-            teacher.IS_GRADUATED = false
+			teacher.IS_GRADUATED = false
 		}
 	} else {
 		logger.Printf("UID %s 選擇 %d 為師父", metadata.Uid, teacherId)
@@ -952,10 +990,10 @@ func doResetDisciple(metadata *clients.Metadata, section string) {
 }
 
 func doCompose(metadata *clients.Metadata, section string) {
-	mockList := []int{26217,26217,26217,26217,26217}
-    ret, _ := weapon.Compose(metadata, mockList, -1)
-    logger.Println(ret)
-    return
+	mockList := []int{26217, 26217, 26217, 26217, 26217}
+	ret, _ := weapon.Compose(metadata, mockList, -1)
+	logger.Println(ret)
+	return
 	weaponListRank3 := make([]int, 0)
 	weaponListRank4 := make([]int, 0)
 	weaponBaseRank5Idx := 0
