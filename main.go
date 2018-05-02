@@ -385,7 +385,7 @@ func doSellItem(metadata *clients.Metadata, cid int, section string) {
 
 func doWasteMoney(metadata *clients.Metadata, section string) {
 	// 一次少 9000
-	targetMoney := 150000000
+	targetMoney := 110000000
 	targetCount := targetMoney / 9000
 	logger.Println("Target Count =", targetCount)
 	for i := 0; i < targetCount; i++ {
