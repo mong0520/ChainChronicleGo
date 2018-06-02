@@ -8,6 +8,7 @@ import (
 	"github.com/mong0520/ChainChronicleGo/clients/item"
 	"github.com/mong0520/ChainChronicleGo/clients/quest"
 	"github.com/mong0520/ChainChronicleGo/clients/session"
+	"github.com/mong0520/ChainChronicleGo/clients/tower"
 	"github.com/mong0520/ChainChronicleGo/clients/user"
 	"github.com/mong0520/ChainChronicleGo/models"
 	"github.com/mong0520/ChainChronicleGo/utils"
@@ -68,6 +69,7 @@ var actionMapping = map[string]interface{}{
 	"DISCIPLE":       doDisciple,
 	"UPDATE":         doUpdateDB,
 	"EXPLORER":       doExplorer,
+	"TOWER":          doTower,
 	"WASTE":          doWasteMoney,
 }
 
@@ -679,6 +681,55 @@ func getPresents(metadata *clients.Metadata, excludeTypes []string) {
 		}
 	} else {
 		logger.Println(res)
+	}
+}
+
+func doTower(metadata *clients.Metadata, section string) {
+	twid, _ := metadata.Config.Int(section, "TowerId")
+	floor, _ := metadata.Config.Int(section, "Floor")
+	snum, _ := metadata.Config.Int(section, "Snum")
+	pt := snum //用和關卡一樣的比較不易混淆
+
+	tower.AddTicket(metadata, twid, 0, 1)
+	resp, res := tower.EnterTower(metadata, twid, floor-1, snum-1, pt-1)
+	// logger.Println("jhere2")
+	switch res {
+	case 0:
+		logger.Println("Enter tower success")
+	case 3312:
+		// no key
+		// logger.Println(resp)
+		logger.Println("年代記挑戰權不足")
+		// tower.AddTicket(metadata, twid, 0, 1)
+		// if resp, err := tower.AddTicket(metadata, twid, 0, 1); err != 0 {
+		// 	logger.Println("回復失敗, 離開")
+		// 	logger.Println(resp)
+		// 	return
+		// } else {
+		// 	logger.Println("回復成功")
+		// 	// doTower(metadata, section)
+		// }
+		return
+	case 3305:
+		logger.Println("無法進行的關卡")
+		logger.Println(resp)
+		return
+	case 3331:
+		logger.Println("重覆卡牌")
+		logger.Println(resp)
+		return
+	default:
+		logger.Println(resp)
+		return
+	}
+
+	resp, res = tower.ExitTower(metadata, twid, 8)
+	switch res {
+	case 0:
+		logger.Printf("完成年代記之塔 %d-%d\n", floor, snum)
+	default:
+		logger.Println(resp)
+		return
 	}
 }
 
