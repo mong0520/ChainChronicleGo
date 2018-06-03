@@ -686,50 +686,63 @@ func getPresents(metadata *clients.Metadata, excludeTypes []string) {
 
 func doTower(metadata *clients.Metadata, section string) {
 	twid, _ := metadata.Config.Int(section, "TowerId")
-	floor, _ := metadata.Config.Int(section, "Floor")
-	snum, _ := metadata.Config.Int(section, "Snum")
-	pt := snum //用和關卡一樣的比較不易混淆
+	// floor, _ := metadata.Config.Int(section, "Floor")
+	// snum, _ := metadata.Config.Int(section, "Snum")
+	// pt := snum //用和關卡一樣的比較不易混淆
 
+	maxFloor := 5
+	maxQuest := 3
+	breakFloor := 5
+	breakQuest := 2
 	tower.AddTicket(metadata, twid, 0, 1)
-	resp, res := tower.EnterTower(metadata, twid, floor-1, snum-1, pt-1)
-	// logger.Println("jhere2")
-	switch res {
-	case 0:
-		logger.Println("Enter tower success")
-	case 3312:
-		// no key
-		// logger.Println(resp)
-		logger.Println("年代記挑戰權不足")
-		// tower.AddTicket(metadata, twid, 0, 1)
-		// if resp, err := tower.AddTicket(metadata, twid, 0, 1); err != 0 {
-		// 	logger.Println("回復失敗, 離開")
-		// 	logger.Println(resp)
-		// 	return
-		// } else {
-		// 	logger.Println("回復成功")
-		// 	// doTower(metadata, section)
-		// }
-		return
-	case 3305:
-		logger.Println("無法進行的關卡")
-		logger.Println(resp)
-		return
-	case 3331:
-		logger.Println("重覆卡牌")
-		logger.Println(resp)
-		return
-	default:
-		logger.Println(resp)
-		return
-	}
+	for floorIndex := 1; floorIndex <= maxFloor; floorIndex++ {
+		for questIndex := 1; questIndex <= maxQuest; questIndex++ {
+			if floorIndex == breakFloor && questIndex > breakQuest {
+				return
+			}
+			logger.Printf("開始年代記之塔 %d-%d\n", floorIndex, questIndex)
+			pt := questIndex
+			// tower.AddTicket(metadata, twid, 0, 1)
+			resp, res := tower.EnterTower(metadata, twid, floorIndex-1, questIndex-1, pt-1)
+			switch res {
+			case 0:
+				// logger.Println("Enter tower success")
+			case 3312:
+				// no key
+				// logger.Println(resp)
+				logger.Println("年代記挑戰權不足")
+				// tower.AddTicket(metadata, twid, 0, 1)
+				// if resp, err := tower.AddTicket(metadata, twid, 0, 1); err != 0 {
+				// 	logger.Println("回復失敗, 離開")
+				// 	logger.Println(resp)
+				// 	return
+				// } else {
+				// 	logger.Println("回復成功")
+				// 	// doTower(metadata, section)
+				// }
+				return
+			case 3305:
+				logger.Println("無法進行的關卡")
+				// logger.Println(resp)
+				continue
+			case 3331:
+				logger.Println("重覆卡牌")
+				logger.Println(resp)
+				return
+			default:
+				logger.Println(resp)
+				return
+			}
 
-	resp, res = tower.ExitTower(metadata, twid, 8)
-	switch res {
-	case 0:
-		logger.Printf("完成年代記之塔 %d-%d\n", floor, snum)
-	default:
-		logger.Println(resp)
-		return
+			resp, res = tower.ExitTower(metadata, twid, 8)
+			switch res {
+			case 0:
+				logger.Printf("完成年代記之塔 %d-%d\n", floorIndex, questIndex)
+			default:
+				logger.Println(resp)
+				return
+			}
+		}
 	}
 }
 
