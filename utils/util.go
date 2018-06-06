@@ -174,7 +174,7 @@ func GetLoggerEx(f *os.File) (log *logging.Logger) {
 	)
 	// 2018/02/01 12:56:09 main.go:149:
 	var formatFile = logging.MustStringFormatter(
-		`%{time:2006/01/02 15:04:05} %{shortfile} [%{level:.4s}]: %{message}`,
+		"%{time:2006/01/02 15:04:05} %{shortfile}\t[%{level:.4s}]: %{message}",
 	)
 	// var formatFile = logging.MustStringFormatter(
 	// 	`%{color}%{time:15:04:05.000} %{shortfunc} > %{level:.4s} %{id:03x}%{color:reset} %{message}`,
