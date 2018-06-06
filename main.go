@@ -33,6 +33,7 @@ import (
 	"github.com/mong0520/ChainChronicleGo/clients/tutorial"
 	"github.com/mong0520/ChainChronicleGo/clients/weapon"
 	"github.com/mong0520/ChainChronicleGo/controllers"
+	"github.com/op/go-logging"
 	"github.com/robfig/config"
 	"github.com/satori/go.uuid"
 	"gopkg.in/mgo.v2"
@@ -49,7 +50,9 @@ type Options struct {
 var options Options
 var parser = flags.NewParser(&options, flags.Default)
 var metadata = &clients.Metadata{}
-var logger *log.Logger
+
+//var logger *log.Logger
+var logger *logging.Logger
 var LogROOT = "logs"
 var actionMapping = map[string]interface{}{
 	"QUEST":          doQuest,
@@ -75,9 +78,9 @@ var actionMapping = map[string]interface{}{
 
 func doAction(sectionName string) {
 	for action, actionFunction := range actionMapping {
-		//logger.Println(action, actionFunction)
+		//logger.Info(action, actionFunction)
 		if strings.HasPrefix(sectionName, action) {
-			logger.Printf("### Current Flow = [%s] ###", sectionName)
+			logger.Infof("### Current Flow = [%s] ###", sectionName)
 			actionFunction.(func(*clients.Metadata, string))(metadata, sectionName)
 		}
 	}
@@ -97,20 +100,20 @@ func start() {
 	defer logFile.Close()
 
 	if err != nil {
-		logger.Fatalln("open file error !")
+		logger.Error("open file error !")
 	}
-	logger = utils.GetLogger(logFile)
+	logger = utils.GetLoggerEx(logFile)
 
 	config, err := config.ReadDefault(options.ConfigPath)
 	if err != nil {
-		logger.Fatalln("Unable to read config, ", err)
+		logger.Error("Unable to read config, ", err)
 		return
 	}
 
 	metadata.Config = config
 
 	if db, err := mgo.Dial("localhost:27017"); err != nil {
-		logger.Fatalln("Unable to connect DB", err)
+		logger.Error("Unable to connect DB", err)
 	} else {
 		metadata.DB = db
 	}
@@ -119,7 +122,7 @@ func start() {
 	uid, _ := metadata.Config.String("GENERAL", "Uid")
 	metadata.Uid = uid
 
-	//logger.Println(uid)
+	//logger.Info(uid)
 	token, _ := metadata.Config.String("GENERAL", "Token")
 	metadata.Token = token
 	if options.Action == "" {
@@ -134,7 +137,7 @@ func start() {
 
 	sid, err := session.Login(uid, token, false)
 	if err != nil {
-		logger.Printf("%s\n", err)
+		logger.Infof("%s\n", err)
 		return
 	}
 	alldata, _ := user.GetAllData(sid)
@@ -161,13 +164,13 @@ func start() {
 	}
 
 	for i := 1; i <= flowLoop; i++ {
-		logger.Printf("Start #%d Flow\n", i)
+		logger.Infof("Start #%d Flow\n", i)
 		for _, flow := range metadata.Flow {
-			logger.Printf("Current action = [%s]\n", flow)
+			logger.Infof("Current action = [%s]\n", flow)
 			doAction(strings.ToUpper(flow))
 		}
 		if sleepDuration > 0 {
-			logger.Println("Waiting", sleepDuration, "seconds")
+			logger.Info("Waiting", sleepDuration, "seconds")
 			time.Sleep(time.Second * time.Duration(sleepDuration))
 		}
 	}
@@ -176,8 +179,8 @@ func start() {
 func doDrama(metadata *clients.Metadata, section string) {
 	questInfo := quest.NewQuest()
 	//questList, _ := dyno.GetSlice(metadata.AllData, "body", 29, "data")
-	//logger.Println(questList)
-	logger.Printf("開始通過主線任務...\n")
+	//logger.Info(questList)
+	logger.Infof("開始通過主線任務...\n")
 	maxRetryCount := 10
 	currentRetryCount := 0
 	flag := 0
@@ -189,15 +192,15 @@ func doDrama(metadata *clients.Metadata, section string) {
 	lvThreshold := 50
 
 	for {
-		//logger.Println(v, reflect.TypeOf(v))
-		//logger.Println(dyno.Get(metadata.AllData, "body", 29, "data", flag, "id"))
+		//logger.Info(v, reflect.TypeOf(v))
+		//logger.Info(dyno.Get(metadata.AllData, "body", 29, "data", flag, "id"))
 		if qType, err := dyno.GetFloat64(metadata.AllData, "body", 29, "data", flag, "type"); err != nil {
-			logger.Println(qType, err)
+			logger.Info(qType, err)
 		} else {
 			questInfo.Type = int(qType)
 		}
 		if qId, err := dyno.GetFloat64(metadata.AllData, "body", 29, "data", flag, "id"); err != nil {
-			logger.Println(qId, err)
+			logger.Info(qId, err)
 		} else {
 			questInfo.QuestId = int(qId)
 		}
@@ -214,36 +217,36 @@ func doDrama(metadata *clients.Metadata, section string) {
 		questInfo.Version = 3
 		errSet := mapset.NewSet()
 		errSet.Clear()
-		//logger.Printf("%+v\n", questInfo)
+		//logger.Infof("%+v\n", questInfo)
 		resp, err := questInfo.StartQeust(metadata)
 		errSet.Add(err)
 		switch err {
 		case 0:
 			_, err = questInfo.EndQeust(metadata)
-			logger.Printf("%d/%d 完成關卡\n", counter, gradudateThreshold)
+			logger.Infof("%d/%d 完成關卡\n", counter, gradudateThreshold)
 			errSet.Add(err)
 		case 103:
-			logger.Printf("體力不足\n")
+			logger.Infof("體力不足\n")
 			if _, err := user.RecoveryAp(1, 1, metadata.Sid); err != 0 {
-				logger.Println("無法恢復體力")
+				logger.Info("無法恢復體力")
 				panic(err)
 			}
 		default:
-			logger.Println("未知的錯誤")
+			logger.Info("未知的錯誤")
 			errSet.Add(err)
-			logger.Println(utils.Map2JsonString(resp))
+			logger.Info(utils.Map2JsonString(resp))
 			if resp, err := questInfo.GetTreasure(metadata); err != 0 {
-				logger.Println(resp)
+				logger.Info(resp)
 			}
 		}
 		if errSet.Contains(0) == false {
-			logger.Printf("Unknown error in drama: %s", errSet)
+			logger.Infof("Unknown error in drama: %s", errSet)
 			currentRetryCount++
 			if currentRetryCount >= maxRetryCount {
 				uid, _ := metadata.Config.String("GENERAL", "Uid")
-				logger.Printf("UID %s is is uable to complete Drama", uid)
+				logger.Infof("UID %s is is uable to complete Drama", uid)
 			} else {
-				logger.Println("Retry...")
+				logger.Info("Retry...")
 				continue
 			}
 		} else {
@@ -261,9 +264,9 @@ func doDrama(metadata *clients.Metadata, section string) {
 	alldata, _ := user.GetAllData(metadata.Sid)
 	metadata.AllData = alldata
 	if currentLv, err := dyno.GetFloat64(metadata.AllData, "body", 4, "data", "lv"); err != nil {
-		logger.Println(err)
+		logger.Info(err)
 	} else {
-		logger.Printf("Current LV %0.f", currentLv)
+		logger.Infof("Current LV %0.f", currentLv)
 		if int(currentLv) >= lvThreshold {
 			teacher.IS_GRADUATED = true
 		}
@@ -295,7 +298,7 @@ func doTutorial(metadata *clients.Metadata, section string) {
 		{"tid": 20, "qid": -1},
 	}
 	newUid := fmt.Sprintf("ANDO%s", uuid.Must(uuid.NewV4()).String())
-	logger.Printf("New UUID = %s", newUid)
+	logger.Infof("New UUID = %s", newUid)
 	// set tor proxy
 	sid, err := session.Login(newUid, "", false)
 	if err != nil {
@@ -306,13 +309,13 @@ func doTutorial(metadata *clients.Metadata, section string) {
 		}
 	}
 	metadata.Uid = newUid
-	//logger.Println(uid)
+	//logger.Info(uid)
 	token, _ := metadata.Config.String("GENERAL", "Token")
 	metadata.Token = token
 	metadata.Sid = sid
 	resp, _ := user.GetAllData(sid)
 	openId, _ := dyno.Get(resp, "body", 4, "data", "uid")
-	logger.Printf("新帳號創立成功, UID = %s, OpenID = %.0f\n", newUid, openId)
+	logger.Infof("新帳號創立成功, UID = %s, OpenID = %.0f\n", newUid, openId)
 	//
 	for _, t := range tutorialInfo {
 		if t["qid"] != -1 {
@@ -326,7 +329,7 @@ func doTutorial(metadata *clients.Metadata, section string) {
 			questInfo.Fid = 1965350
 			questInfo.Pt = 0
 			if resp, err := questInfo.EndQeust(metadata); err != 0 {
-				logger.Println(utils.Map2JsonString(resp), err)
+				logger.Info(utils.Map2JsonString(resp), err)
 				break
 			}
 		} else {
@@ -337,7 +340,7 @@ func doTutorial(metadata *clients.Metadata, section string) {
 					"tid":  t["tid"],
 				}
 				if resp, err := tutorial.Tutorial(sid, false, param); err != 0 {
-					logger.Println(utils.Map2JsonString(resp), err)
+					logger.Info(utils.Map2JsonString(resp), err)
 					break
 				}
 			} else {
@@ -345,43 +348,43 @@ func doTutorial(metadata *clients.Metadata, section string) {
 					"tid": t["tid"],
 				}
 				if resp, err := tutorial.Tutorial(sid, false, param); err != 0 {
-					logger.Println(utils.Map2JsonString(resp), err)
+					logger.Info(utils.Map2JsonString(resp), err)
 					break
 				}
 			}
 		}
 	}
-	logger.Printf("新帳號完成新手教學, UID = %s, OpenID = %.0f\n", newUid, openId)
+	logger.Infof("新帳號完成新手教學, UID = %s, OpenID = %.0f\n", newUid, openId)
 	getPresents(metadata, nil)
 }
 
 func doGacha(metadata *clients.Metadata, section string) {
 	gachaInfo := gacha.NewGachaInfo()
 	utils.ParseConfig2Struct(metadata.Config, section, gachaInfo)
-	logger.Println("開始轉蛋")
+	logger.Info("開始轉蛋")
 	if resp, ret := gachaInfo.Gacha(metadata); ret == 0 {
 		gachaResult := processGachaResult(resp)
 		for _, card := range gachaResult["char"].([]models.GachaResultChara) {
 			myCard := models.Charainfo{}
 			query := bson.M{"cid": card.ID}
 			controllers.GeneralQuery(metadata.DB, "charainfo", query, &myCard)
-			//logger.Printf("得到 %d星卡: %s-%s", myCard.Rarity, myCard.Title, myCard.Name)
+			//logger.Infof("得到 %d星卡: %s-%s", myCard.Rarity, myCard.Title, myCard.Name)
 			if gachaInfo.AutoSell && myCard.Rarity <= gachaInfo.AutoSellRarityThreshold {
-				logger.Println("賣出卡片...")
+				logger.Info("賣出卡片...")
 				doSellItem(metadata, card.Idx, "")
 			}
 		}
 
 	} else {
-		logger.Println(utils.Map2JsonString(resp))
+		logger.Info(utils.Map2JsonString(resp))
 	}
 }
 
 func doSellItem(metadata *clients.Metadata, cid int, section string) {
 	if ret, err := card.Sell(metadata, cid); err != 0 {
-		logger.Println("\t-> 賣出卡片失敗", utils.Map2JsonString(ret))
+		logger.Info("\t-> 賣出卡片失敗", utils.Map2JsonString(ret))
 	} else {
-		logger.Println("\t-> 賣出卡片成功")
+		logger.Info("\t-> 賣出卡片成功")
 	}
 }
 
@@ -389,9 +392,9 @@ func doWasteMoney(metadata *clients.Metadata, section string) {
 	// 一次少 9000
 	targetMoney := 110000000
 	targetCount := targetMoney / 9000
-	logger.Println("Target Count =", targetCount)
+	logger.Info("Target Count =", targetCount)
 	for i := 0; i < targetCount; i++ {
-		logger.Printf("Loop # %d", i)
+		logger.Infof("Loop # %d", i)
 		doExplorer(metadata, "EXPLORER")
 		for eid := 1; eid <= 3; eid++ {
 			explorer.CancelExplorer(metadata.Sid, eid)
@@ -430,51 +433,51 @@ func doExplorer(metadata *clients.Metadata, section string) {
 		resp, err := explorer.GetExplorerResult(metadata.Sid, i+1)
 		switch err {
 		case 0, 2308:
-			logger.Println("可以開始探索")
+			logger.Info("可以開始探索")
 
 		case 2302:
-			logger.Println("探索尚未結束")
-			logger.Printf("Use stone to finish? %t\n", useStone)
+			logger.Info("探索尚未結束")
+			logger.Infof("Use stone to finish? %t\n", useStone)
 			if useStone {
 				explorer.FinishExplorer(metadata.Sid, i+1)
-				//logger.Println(utils.Map2JsonString(resp))
+				//logger.Info(utils.Map2JsonString(resp))
 
 				resp, _ = explorer.GetExplorerResult(metadata.Sid, i+1)
-				//logger.Println(utils.Map2JsonString(resp))
+				//logger.Info(utils.Map2JsonString(resp))
 
 				rewards, _ := dyno.GetSlice(resp, "explorer_reward")
 				for _, reward := range rewards {
-					//logger.Println(reward)
+					//logger.Info(reward)
 					rewardItem := reward.(map[string]interface{})["item_id"].(float64)
 					rewardType := reward.(map[string]interface{})["item_type"].(string)
-					//logger.Println("Reward Type ", rewardType)
+					//logger.Info("Reward Type ", rewardType)
 					if rewardType == "card" {
 						tmpCardInfo := &models.Charainfo{} // for mongodb result
 						cid := int(rewardItem)
-						//logger.Println("cid =", cid)
+						//logger.Info("cid =", cid)
 						query := bson.M{"cid": cid}
 						if err := controllers.GeneralQuery(metadata.DB, "charainfo", query, &tmpCardInfo); err != nil {
-							logger.Println("得到角色", rewardItem, err)
+							logger.Info("得到角色", rewardItem, err)
 						} else {
-							logger.Println("得到", tmpCardInfo.Rarity, "星角色", tmpCardInfo.Name)
+							logger.Info("得到", tmpCardInfo.Rarity, "星角色", tmpCardInfo.Name)
 							if tmpCardInfo.Cid == 6248 {
 								os.Exit(0)
 							}
 						}
 					} else {
-						//logger.Println("得到ID", rewardItem)
+						//logger.Info("得到ID", rewardItem)
 					}
 				}
 			}
 		case 1:
-			logger.Println("已被登出")
+			logger.Info("已被登出")
 		default:
-			logger.Println("未知的結果")
-			logger.Println(resp)
+			logger.Info("未知的結果")
+			logger.Info(resp)
 		}
 		for _, pickupItem := range pickupList {
 			if pickupItem.LocationID == area {
-				//logger.Printf("Start to find best card to explorer area %d\n", pickupItem.LocationID)
+				//logger.Infof("Start to find best card to explorer area %d\n", pickupItem.LocationID)
 				result := map[string]int{}
 				if mock {
 					result = findBestCardToExplorerMocked(i)
@@ -496,7 +499,7 @@ func doExplorer(metadata *clients.Metadata, section string) {
 					param["pickup"] = 0
 					explorer.StartExplorer(metadata.Sid, param)
 				default:
-					logger.Printf("%s\n", utils.Map2JsonString(resp))
+					logger.Infof("%s\n", utils.Map2JsonString(resp))
 				}
 			}
 		}
@@ -516,7 +519,7 @@ func setCharaData() {
 		}
 		query := bson.M{"cid": tmpCharData.ID}
 		if err := controllers.GeneralQuery(metadata.DB, "charainfo", query, &tmpCardInfo); err != nil {
-			logger.Println(tmpCharData.ID, err)
+			logger.Info(tmpCharData.ID, err)
 		} else {
 			charaInfo = append(charaInfo, *tmpCardInfo)
 			charaData = append(charaData, *tmpCharData)
@@ -555,7 +558,7 @@ func findBestCardToExplorer(pickupItem *explorer.Pickup) (result map[string]int)
 			continue
 		} else if ((pickupItem.Home == charInfo.Home) || (pickupItem.Jobtype == charInfo.Jobtype)) && !utils.InArray(charInfo.Cid, metadata.ExplorerExcludeCids) {
 			// 適合的
-			logger.Printf("Pick %s to explorer, cid = %d, idx = %d, rank = %d\n", charInfo.Name, charInfo.Cid, charData.Idx, charInfo.Rarity)
+			logger.Infof("Pick %s to explorer, cid = %d, idx = %d, rank = %d\n", charInfo.Name, charInfo.Cid, charData.Idx, charInfo.Rarity)
 			metadata.ExplorerExcludeCids = append(metadata.ExplorerExcludeCids, charInfo.Cid)
 			result["cid"] = charInfo.Cid
 			result["idx"] = charData.Idx
@@ -571,7 +574,7 @@ func findBestCardToExplorer(pickupItem *explorer.Pickup) (result map[string]int)
 
 func processGachaResult(resp map[string]interface{}) (gachaResult map[string]interface{}) {
 	gachaData, _ := dyno.GetSlice(resp, "body")
-	//logger.Println(utils.Map2JsonString(resp))
+	//logger.Info(utils.Map2JsonString(resp))
 	gachaResult = map[string]interface{}{
 		"char":   []models.GachaResultChara{},
 		"item":   []models.GachaResultItem{},
@@ -593,37 +596,37 @@ func processGachaResult(resp map[string]interface{}) (gachaResult map[string]int
 		dataType, _ := dyno.GetFloat64(data, "type")
 		switch dataType {
 		case 15:
-			logger.Println(i, "Type 15", data)
+			logger.Info(i, "Type 15", data)
 		case 1:
-			//logger.Println(i, "得到角色")
+			//logger.Info(i, "得到角色")
 			list := data.(map[string]interface{})["data"].([]interface{})
 			for _, item := range list {
 				tmpItem := &models.GachaResultChara{}
 				tmpDBItem := &models.Charainfo{}
 				if err := utils.Map2Struct(item.(map[string]interface{}), tmpItem); err != nil {
-					logger.Println("Unable to convert to struct", err)
+					logger.Info("Unable to convert to struct", err)
 				} else {
 					query := bson.M{"cid": tmpItem.ID}
 					if err := controllers.GeneralQuery(metadata.DB, "charainfo", query, tmpDBItem); err != nil {
-						logger.Println(i, "得到", tmpItem.ID)
+						logger.Info(i, "得到", tmpItem.ID)
 					} else {
-						logger.Printf("得到 %d星卡: %s-%s", tmpDBItem.Rarity, tmpDBItem.Title, tmpDBItem.Name)
+						logger.Infof("得到 %d星卡: %s-%s", tmpDBItem.Rarity, tmpDBItem.Title, tmpDBItem.Name)
 					}
 					charList = append(charList, *tmpItem)
 				}
 			}
 		case 2:
-			//logger.Println(i, "得到成長卡/冶鍊卡", data)
+			//logger.Info(i, "得到成長卡/冶鍊卡", data)
 			list := data.(map[string]interface{})["data"].([]interface{})
 			for _, item := range list {
 				tmpItem := &models.GachaResultItem{}
 				tmpDBItem := &models.Chararein{}
 				if err := utils.Map2Struct(item.(map[string]interface{}), tmpItem); err != nil {
-					logger.Println("Unable to convert to struct", err)
+					logger.Info("Unable to convert to struct", err)
 				} else {
 					query := bson.M{"id": tmpItem.ItemID}
 					controllers.GeneralQuery(metadata.DB, "chararein", query, tmpDBItem)
-					logger.Println(i, "得到", tmpDBItem.Name)
+					logger.Info(i, "得到", tmpDBItem.Name)
 					itemList = append(itemList, *tmpItem)
 				}
 			}
@@ -635,19 +638,19 @@ func processGachaResult(resp map[string]interface{}) (gachaResult map[string]int
 				tmpItem := &models.GachaResultWeapon{}
 				tmpDBItem := &models.Weapon{}
 				if err := utils.Map2Struct(item.(map[string]interface{}), tmpItem); err != nil {
-					logger.Println("Unable to convert to struct", err)
+					logger.Info("Unable to convert to struct", err)
 				} else {
 					query := bson.M{"id": tmpItem.ItemID}
 					if err := controllers.GeneralQuery(metadata.DB, "evolve", query, tmpDBItem); err != nil {
-						logger.Println(i, "得到", tmpItem.ItemID)
+						logger.Info(i, "得到", tmpItem.ItemID)
 					} else {
-						logger.Println(i, "得到", tmpDBItem.Name)
+						logger.Info(i, "得到", tmpDBItem.Name)
 					}
 					weaponList = append(weaponList, *tmpItem)
 				}
 			}
 		default:
-			logger.Println(dataType)
+			logger.Info(dataType)
 		}
 	}
 	gachaResult["char"] = charList
@@ -660,7 +663,7 @@ func doDebug(metadata *clients.Metadata, section string) {
 	api := "data/weaponlist"
 	param := map[string]interface{}{}
 	ret, _ := general.GeneralAction(api, metadata.Sid, param)
-	logger.Println(utils.Map2JsonString(ret))
+	logger.Info(utils.Map2JsonString(ret))
 }
 
 func doUpdateDB(metadata *clients.Metadata, section string) {
@@ -674,13 +677,13 @@ func getPresents(metadata *clients.Metadata, excludeTypes []string) {
 				continue
 			}
 			if _, err := present.ReceievePresent(p.Idx, metadata.Sid); err == 0 {
-				logger.Printf("-> 接收禮物 {%+v}\n", p)
+				logger.Infof("-> 接收禮物 {%+v}\n", p)
 			} else {
-				logger.Printf("-> 接收禮物失敗 {%s}, %s\n", p.Text, err)
+				logger.Infof("-> 接收禮物失敗 {%s}, %s\n", p.Text, err)
 			}
 		}
 	} else {
-		logger.Println(res)
+		logger.Info(res)
 	}
 }
 
@@ -700,46 +703,46 @@ func doTower(metadata *clients.Metadata, section string) {
 			if floorIndex == breakFloor && questIndex > breakQuest {
 				return
 			}
-			logger.Printf("開始年代記之塔 %d-%d\n", floorIndex, questIndex)
+			logger.Infof("開始年代記之塔 %d-%d\n", floorIndex, questIndex)
 			pt := questIndex
 			// tower.AddTicket(metadata, twid, 0, 1)
 			resp, res := tower.EnterTower(metadata, twid, floorIndex-1, questIndex-1, pt-1)
 			switch res {
 			case 0:
-				// logger.Println("Enter tower success")
+				// logger.Info("Enter tower success")
 			case 3312:
 				// no key
-				// logger.Println(resp)
-				logger.Println("年代記挑戰權不足")
+				// logger.Info(resp)
+				logger.Info("年代記挑戰權不足")
 				// tower.AddTicket(metadata, twid, 0, 1)
 				// if resp, err := tower.AddTicket(metadata, twid, 0, 1); err != 0 {
-				// 	logger.Println("回復失敗, 離開")
-				// 	logger.Println(resp)
+				// 	logger.Info("回復失敗, 離開")
+				// 	logger.Info(resp)
 				// 	return
 				// } else {
-				// 	logger.Println("回復成功")
+				// 	logger.Info("回復成功")
 				// 	// doTower(metadata, section)
 				// }
 				return
 			case 3305:
-				logger.Println("無法進行的關卡")
-				// logger.Println(resp)
+				logger.Info("無法進行的關卡")
+				// logger.Info(resp)
 				continue
 			case 3331:
-				logger.Println("重覆卡牌")
-				logger.Println(resp)
+				logger.Info("重覆卡牌")
+				logger.Info(resp)
 				return
 			default:
-				logger.Println(resp)
+				logger.Info(resp)
 				return
 			}
 
 			resp, res = tower.ExitTower(metadata, twid, 8)
 			switch res {
 			case 0:
-				logger.Printf("完成年代記之塔 %d-%d\n", floorIndex, questIndex)
+				logger.Infof("完成年代記之塔 %d-%d\n", floorIndex, questIndex)
 			default:
-				logger.Println(resp)
+				logger.Info(resp)
 				return
 			}
 		}
@@ -751,12 +754,12 @@ func doBuy(metadata *clients.Metadata, section string) {
 	itemType, _ := metadata.Config.String(section, "Type")
 
 	for i := 0; i <= count; i++ {
-		logger.Printf("#%d 購買道具, %s", i+1, itemType)
+		logger.Infof("#%d 購買道具, %s", i+1, itemType)
 		if resp, res := item.BuyItemByType(itemType, metadata.Sid); res == 0 {
-			logger.Println("\t-> 完成")
+			logger.Info("\t-> 完成")
 		} else {
-			logger.Println("\t-> 失敗")
-			logger.Println(resp, res)
+			logger.Info("\t-> 失敗")
+			logger.Info(resp, res)
 		}
 	}
 }
@@ -766,7 +769,7 @@ func doShowChars(metadata *clients.Metadata, section string) {
 
 	chars, _ := dyno.GetSlice(metadata.AllData, "body", 6, "data")
 	threshold := 5
-	//logger.Println(chars)
+	//logger.Info(chars)
 	for _, c := range chars {
 		cardInfo := &models.Charainfo{} // for mongodb result
 		charData := &models.CharaData{} // for alldata structure
@@ -776,10 +779,10 @@ func doShowChars(metadata *clients.Metadata, section string) {
 		}
 		query := bson.M{"cid": charData.ID}
 		if err := controllers.GeneralQuery(metadata.DB, "charainfo", query, &cardInfo); err != nil {
-			logger.Println(charData.ID)
+			logger.Info(charData.ID)
 		} else {
 			if cardInfo.Rarity >= threshold {
-				logger.Printf("%d, %s-%s, 目前等級: %d, 界限突破:%d",
+				logger.Infof("%d, %s-%s, 目前等級: %d, 界限突破:%d",
 					cardInfo.Cid, cardInfo.Title, cardInfo.Name, charData.Lv, charData.LimitBreak)
 				if autoCompose == false {
 					continue
@@ -789,12 +792,12 @@ func doShowChars(metadata *clients.Metadata, section string) {
 						//log.Println(utils.Map2JsonString(res), err)
 						lv, _ := dyno.GetFloat64(ret, "base_card", "lv")
 						maxLv, _ := dyno.GetFloat64(ret, "base_card", "maxlv")
-						logger.Printf("目前進度 %.0f/%0.f\n", lv, maxLv)
+						logger.Infof("目前進度 %.0f/%0.f\n", lv, maxLv)
 						charData.Lv = int(lv)
 						charData.Maxlv = int(maxLv)
 						//os.Exit(0)
 					} else {
-						logger.Printf("Unable to compose: %s\n", utils.Map2JsonString(ret))
+						logger.Infof("Unable to compose: %s\n", utils.Map2JsonString(ret))
 						return
 					}
 				}
@@ -808,12 +811,12 @@ func doPassword(metadata *clients.Metadata, section string) {
 
 	resp, _ := user.GetAccount(metadata.Sid)
 	account := resp["account"].(string)
-	//logger.Printf("%s\n", utils.Map2JsonString(resp))
+	//logger.Infof("%s\n", utils.Map2JsonString(resp))
 
 	resp, _ = user.SetPassword(tempPassword, metadata.Sid)
-	//logger.Println(utils.Map2JsonString(resp))
+	//logger.Info(utils.Map2JsonString(resp))
 
-	logger.Printf("Account: [%s] has set password: [%s]", account, tempPassword)
+	logger.Infof("Account: [%s] has set password: [%s]", account, tempPassword)
 }
 
 func doTakeOver(metadata *clients.Metadata, section string) {
@@ -821,9 +824,9 @@ func doTakeOver(metadata *clients.Metadata, section string) {
 	account, _ := metadata.Config.String("GENERAL", "Account")
 	uuid, _ := metadata.Config.String("GENERAL", "Uid")
 	if ret, err := user.Takeover(uuid, account, tempPassword); err != 0 {
-		logger.Println("Unable to takeover account", utils.Map2JsonString(ret))
+		logger.Info("Unable to takeover account", utils.Map2JsonString(ret))
 	} else {
-		logger.Println("帳號轉移完成")
+		logger.Info("帳號轉移完成")
 	}
 
 }
@@ -842,32 +845,32 @@ func doStatus(metadata *clients.Metadata, section string) {
 	}
 	specialData := metadata.AllData["body"].([]interface{})[8].(map[string]interface{})["data"]
 	stoneCount := metadata.AllData["body"].([]interface{})[12].(map[string]interface{})["data"]
-	logger.Printf("精靈石 = %.0f\n", stoneCount.(float64))
+	logger.Infof("精靈石 = %.0f\n", stoneCount.(float64))
 	for _, item := range specialData.([]interface{}) {
 		itemId := item.(map[string]interface{})["item_id"]
 		cnt := item.(map[string]interface{})["cnt"]
-		//logger.Println(itemId, reflect.TypeOf(itemId))
-		//logger.Println(cnt, reflect.TypeOf(cnt))
+		//logger.Info(itemId, reflect.TypeOf(itemId))
+		//logger.Info(cnt, reflect.TypeOf(cnt))
 		//fmt.Println(itemId)
 		if val, ok := itemMapping[int(itemId.(float64))]; ok {
 			switch reflect.TypeOf(cnt).Kind() {
 			case reflect.String:
-				logger.Printf("%s = %s\n", val, cnt.(string))
+				logger.Infof("%s = %s\n", val, cnt.(string))
 			case reflect.Float64:
-				logger.Printf("%s = %.0f\n", val, cnt.(float64))
+				logger.Infof("%s = %.0f\n", val, cnt.(float64))
 			}
 		}
 	}
 
 	userData := metadata.AllData["body"].([]interface{})[4].(map[string]interface{})["data"]
-	//logger.Println(utils.Map2JsonString(metadata.AllData))
+	//logger.Info(utils.Map2JsonString(metadata.AllData))
 	for k, v := range userData.(map[string]interface{}) {
 		if utils.InArray(k, targets) {
 			switch v.(type) {
 			case float64, float32:
-				logger.Printf("%s = %.0f\n", k, v)
+				logger.Infof("%s = %.0f\n", k, v)
 			default:
-				logger.Printf("%s = %v\n", k, v)
+				logger.Infof("%s = %v\n", k, v)
 			}
 		}
 	}
@@ -882,23 +885,23 @@ func recoverAp(metadata *clients.Metadata) (ret int) {
 	ret = 0
 	switch res {
 	case 0:
-		logger.Println("恢復體力完成")
+		logger.Info("恢復體力完成")
 	case 703:
-		logger.Println("恢復體力失敗，體力果實不足，購買體力果實")
+		logger.Info("恢復體力失敗，體力果實不足，購買體力果實")
 		if _, err := item.BuyItemByType(item.AP_FRUIT, metadata.Sid); err != 0 {
-			logger.Println("購買體力果實失敗")
+			logger.Info("購買體力果實失敗")
 			ret = 1
 		}
 	default:
-		logger.Println("未知的錯誤")
-		logger.Println(utils.Map2JsonString(resp))
+		logger.Info("未知的錯誤")
+		logger.Info(utils.Map2JsonString(resp))
 		ret = 2
 	}
 	return ret
 }
 
 func doQuest(metadata *clients.Metadata, section string) {
-	//logger.Println("enter doQuest")
+	//logger.Info("enter doQuest")
 	conf := metadata.Config
 	questInfo := quest.NewQuest()
 	count, _ := conf.Int(section, "Count")
@@ -915,40 +918,40 @@ func doQuest(metadata *clients.Metadata, section string) {
 		if current > count && infinite == false {
 			break
 		}
-		logger.Printf("#%d 開始關卡:[%d]", current, questInfo.QuestId)
+		logger.Infof("#%d 開始關卡:[%d]", current, questInfo.QuestId)
 		resp, res := questInfo.StartQeust(metadata)
 		switch res {
 		case 0:
 			//do nothing
 		case 103:
-			logger.Println("AP 不足，使用體力果")
+			logger.Info("AP 不足，使用體力果")
 			if ret := recoverAp(metadata); ret != 0 {
-				logger.Println("回復AP失敗")
+				logger.Info("回復AP失敗")
 				break
 			}
 			current -= 1
 			continue
 		default:
-			logger.Println("未知的錯誤")
-			logger.Println(resp)
+			logger.Info("未知的錯誤")
+			logger.Info(resp)
 			break
 		}
 		resp, res = questInfo.EndQeust(metadata)
 		//fmt.Println(utils.Map2JsonString(resp))
 		switch res {
 		case 0:
-			logger.Println("關卡完成")
+			logger.Info("關卡完成")
 			//Check if need to sell cards
 		case 1:
-			logger.Println("關卡失敗，已被登出")
+			logger.Info("關卡失敗，已被登出")
 		default:
-			logger.Println("未知的錯誤")
-			logger.Println(resp)
+			logger.Info("未知的錯誤")
+			logger.Info(resp)
 		}
 
 		if questInfo.AutoRaid {
 			//time.Sleep(time.Second)
-			//logger.Println("Checking 魔神戰")
+			//logger.Info("Checking 魔神戰")
 			raidQuest(metadata, questInfo.AutoRaidRecover, section)
 		}
 	}
@@ -957,40 +960,40 @@ func doQuest(metadata *clients.Metadata, section string) {
 func raidQuest(metadata *clients.Metadata, recovery bool, section string) {
 	//ret, _ := raid.RaidList(metadata.Sid)
 	if bossInfo := raid.GetRaidBossInfo(metadata.Sid); bossInfo != nil {
-		//logger.Printf("%+v", bossInfo)
-		logger.Printf("魔神來襲! BossId = %d, bossLv = %d\n", bossInfo.BossID, bossInfo.BossParam.Lv)
+		//logger.Infof("%+v", bossInfo)
+		logger.Infof("魔神來襲! BossId = %d, bossLv = %d\n", bossInfo.BossID, bossInfo.BossParam.Lv)
 		param := map[string]interface{}{}
 		ret, err := bossInfo.StartQuest(metadata, param)
 
 		switch err {
 		case 0:
 			if ret, err := bossInfo.EndQuest(metadata, param); err != 0 {
-				logger.Println("無法結束魔神戰")
-				logger.Println(utils.Map2JsonString(ret))
+				logger.Info("無法結束魔神戰")
+				logger.Info(utils.Map2JsonString(ret))
 			} else {
 				bossInfo.GetBonus(metadata, param)
 			}
 		case 104:
-			logger.Println("魔神體力不足")
+			logger.Info("魔神體力不足")
 			if recovery {
 				if ret, err := user.RecoveryBp(0, 2, metadata.Sid); err != 0 {
-					logger.Println("\t ->回復體力失敗", ret)
+					logger.Info("\t ->回復體力失敗", ret)
 				} else {
-					logger.Println("\t ->回復體力成功")
+					logger.Info("\t ->回復體力成功")
 				}
 			}
 
 		case 603:
 		case 608:
-			logger.Println("魔神已結束")
+			logger.Info("魔神已結束")
 			bossInfo.EndQuest(metadata, param)
 			bossInfo.GetBonus(metadata, param)
 		default:
-			logger.Println("未知的魔神戰錯誤", utils.Map2JsonString(ret))
+			logger.Info("未知的魔神戰錯誤", utils.Map2JsonString(ret))
 		}
 
 	} else {
-		logger.Println("No Boss info found")
+		logger.Info("No Boss info found")
 	}
 }
 
@@ -1002,30 +1005,30 @@ func doDisciple(metadata *clients.Metadata, section string) {
 		// use config value
 		teacher.IS_GRADUATED = isGraduate
 	}
-	logger.Println("Teacher ID", teacherId, "Is Graduate?", teacher.IS_GRADUATED)
+	logger.Info("Teacher ID", teacherId, "Is Graduate?", teacher.IS_GRADUATED)
 
 	if teacher.IS_GRADUATED {
 		// thanks teacher
 		for _, lv := range []int{5, 10, 15, 20, 25, 30, 35, 40, 45} {
 			if ret, err := teacher.ThanksAchievement(metadata, lv); err != 0 {
-				logger.Printf("UID %s 無法 給與 Rank %d 獎勵, res = %s\n", metadata.Uid, lv, utils.Map2JsonString(ret))
+				logger.Infof("UID %s 無法 給與 Rank %d 獎勵, res = %s\n", metadata.Uid, lv, utils.Map2JsonString(ret))
 			} else {
-				logger.Printf("UID %s 給與 Rank %d 獎勵\n", metadata.Uid, lv)
+				logger.Infof("UID %s 給與 Rank %d 獎勵\n", metadata.Uid, lv)
 			}
 		}
 		if ret, err := teacher.ThanksGgraduate(metadata); err != 0 {
-			logger.Printf("UID %s 無法畢業, res = %s, trying...\n", metadata.Uid, utils.Map2JsonString(ret))
+			logger.Infof("UID %s 無法畢業, res = %s, trying...\n", metadata.Uid, utils.Map2JsonString(ret))
 			time.Sleep(3 * time.Second)
 			teacher.ThanksGgraduate(metadata)
 		} else {
-			logger.Printf("UID %s 畢業\n", metadata.Uid)
+			logger.Infof("UID %s 畢業\n", metadata.Uid)
 			teacher.IS_GRADUATED = false
 		}
 	} else {
-		logger.Printf("UID %s 選擇 %d 為師父", metadata.Uid, teacherId)
+		logger.Infof("UID %s 選擇 %d 為師父", metadata.Uid, teacherId)
 		if ret, err := teacher.ApplyTeacher(metadata, teacherId); err != 0 {
-			logger.Printf("UID %s 選擇 %d 為師父 失敗! %d", metadata.Uid, teacherId, err)
-			logger.Println(utils.Map2JsonString(ret))
+			logger.Infof("UID %s 選擇 %d 為師父 失敗! %d", metadata.Uid, teacherId, err)
+			logger.Info(utils.Map2JsonString(ret))
 			os.Exit(-1)
 		}
 	}
@@ -1033,9 +1036,9 @@ func doDisciple(metadata *clients.Metadata, section string) {
 
 func doTeacher(metadata *clients.Metadata, section string) {
 	if res, err := teacher.EnableTeacher(metadata); err != 0 {
-		logger.Println("Unable to enable teacher", utils.Map2JsonString(res))
+		logger.Info("Unable to enable teacher", utils.Map2JsonString(res))
 	} else {
-		logger.Println("Enable teacher success")
+		logger.Info("Enable teacher success")
 	}
 
 }
@@ -1046,9 +1049,9 @@ func doResetDisciple(metadata *clients.Metadata, section string) {
 	for _, d := range disciples {
 		fmt.Println("Trying to reset disciple", d.UID, d.Resetable, d.Name)
 		if resp, err := teacher.ResetDisciple(metadata, d.UID); err != 0 {
-			logger.Println("Unable to reset Disciple", d.UID, utils.Map2JsonString(resp))
+			logger.Info("Unable to reset Disciple", d.UID, utils.Map2JsonString(resp))
 		} else {
-			logger.Println("Reset Disciple success")
+			logger.Info("Reset Disciple success")
 		}
 	}
 }
@@ -1056,7 +1059,7 @@ func doResetDisciple(metadata *clients.Metadata, section string) {
 func doCompose(metadata *clients.Metadata, section string) {
 	mockList := []int{26217, 26217, 26217, 26217, 26217}
 	ret, _ := weapon.Compose(metadata, mockList, -1)
-	logger.Println(ret)
+	logger.Info(ret)
 	return
 	weaponListRank3 := make([]int, 0)
 	weaponListRank4 := make([]int, 0)
@@ -1065,7 +1068,7 @@ func doCompose(metadata *clients.Metadata, section string) {
 	eid := -1
 	if tmpEid, err := metadata.Config.Int(section, "Eid"); err != nil {
 		eid = -1
-		logger.Println("EID:", eid)
+		logger.Info("EID:", eid)
 	} else {
 		eid = tmpEid
 	}
@@ -1092,28 +1095,28 @@ func doCompose(metadata *clients.Metadata, section string) {
 
 		//買 五把或四把 三星武器
 		for j := 0; j < buyCount; j++ {
-			//logger.Println("購買武器", weaponData["id"])
+			//logger.Info("購買武器", weaponData["id"])
 			if ret, err := item.BuyItemGeneral(metadata, weaponData); err != 0 {
-				logger.Println("Unable to buy item", utils.Map2JsonString(ret))
+				logger.Info("Unable to buy item", utils.Map2JsonString(ret))
 				os.Exit(0)
 			} else {
 				baseWeaponIdx, _ := dyno.GetFloat64(ret, "body", 1, "data", 0, "item_id")
-				//logger.Println(baseWeaponIdx)
+				//logger.Info(baseWeaponIdx)
 				weaponListRank3 = append(weaponListRank3, int(baseWeaponIdx))
 			}
 		}
 		// 五把三星器武器，鍊成四星武器
 		if len(weaponListRank3) == 5 {
-			//logger.Println("開始鍊金，三星*5")
+			//logger.Info("開始鍊金，三星*5")
 			if ret, err := weapon.Compose(metadata, weaponListRank3, eid); err != 0 {
-				logger.Println("Compose error", utils.Map2JsonString(ret), err)
+				logger.Info("Compose error", utils.Map2JsonString(ret), err)
 				os.Exit(0)
 			} else {
 				weaponListRank3 = nil // clear slice
 				body, _ := dyno.GetSlice(ret, "body")
 				lastIndex := len(body) - 1
 				itemId, _ := dyno.GetFloat64(ret, "body", lastIndex-1, "data", 0, "item_id")
-				//logger.Println("得到武器：", itemId)
+				//logger.Info("得到武器：", itemId)
 				weaponListRank4 = append(weaponListRank4, int(itemId))
 			}
 		}
@@ -1137,25 +1140,25 @@ func doCompose(metadata *clients.Metadata, section string) {
 			}
 
 			if foundTarget {
-				logger.Println("!! 得到神器：", myWeapon.Name)
+				logger.Info("!! 得到神器：", myWeapon.Name)
 				weaponBaseRank5Idx = 0
 				break // break main for loop
 			} else {
-				logger.Println("得到武器：", myWeapon.Name)
+				logger.Info("得到武器：", myWeapon.Name)
 				weaponBaseRank5Idx = int(itemId)
 			}
 		} else if len(weaponListRank4) == 5 {
 			// 鍊出做為基底的五星武器
-			//logger.Println("開始鍊金，四星*5")
+			//logger.Info("開始鍊金，四星*5")
 			if ret, err := weapon.Compose(metadata, weaponListRank4, eid); err != 0 {
-				logger.Println("Compose error", utils.Map2JsonString(ret), err)
+				logger.Info("Compose error", utils.Map2JsonString(ret), err)
 				os.Exit(0)
 			} else {
 				weaponListRank4 = nil // clear slice
 				body, _ := dyno.GetSlice(ret, "body")
 				lastIndex := len(body) - 1
 				itemId, _ := dyno.GetFloat64(ret, "body", lastIndex-1, "data", 0, "item_id")
-				//logger.Println("得到武器：", itemId)
+				//logger.Info("得到武器：", itemId)
 				weaponBaseRank5Idx = int(itemId)
 			}
 		}
@@ -1174,5 +1177,5 @@ func main() {
 }
 
 func dumpUser(u *clients.Metadata) {
-	logger.Printf("%+v\n", *u)
+	logger.Infof("%+v\n", *u)
 }

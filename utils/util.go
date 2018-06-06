@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/oleiade/reflections"
+	"github.com/op/go-logging"
 	"github.com/robfig/config"
 )
 
@@ -162,6 +163,32 @@ func GetLogger(f *os.File) (logger *log.Logger) {
 	}
 
 	return logger
+}
+
+func GetLoggerEx(f *os.File) (log *logging.Logger) {
+	log = logging.MustGetLogger("GoCC")
+	var formatConsole = logging.MustStringFormatter(
+		// `%{message}`,
+		// 20060102150405
+		`%{message}`,
+	)
+	// 2018/02/01 12:56:09 main.go:149:
+	var formatFile = logging.MustStringFormatter(
+		`%{time:2006/01/02 15:04:05} %{shortfile} [%{level:.4s}]: %{message}`,
+	)
+	// var formatFile = logging.MustStringFormatter(
+	// 	`%{color}%{time:15:04:05.000} %{shortfunc} > %{level:.4s} %{id:03x}%{color:reset} %{message}`,
+	// )
+	backendFile := logging.NewLogBackend(f, "", 0)
+	backendConsole := logging.NewLogBackend(os.Stdout, "", 0)
+
+	backendFileFormatter := logging.NewBackendFormatter(backendFile, formatFile)
+	backendConsoleFormatter := logging.NewBackendFormatter(backendConsole, formatConsole)
+	// backend1Leveled := logging.AddModuleLevel(backend1)
+	// backend1Leveled.SetLevel(logging.INFO, "")
+
+	logging.SetBackend(backendFileFormatter, backendConsoleFormatter)
+	return log
 }
 
 func DumpConfig(c *config.Config) {
