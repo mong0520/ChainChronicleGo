@@ -1,13 +1,13 @@
 package quest
 
 import (
-    "fmt"
+	"fmt"
 	"strings"
 	"time"
 
-    "github.com/mong0520/ChainChronicleGo/clients"
-    "github.com/mong0520/ChainChronicleGo/utils"
-    "github.com/mong0520/ChainChronicleGo/clients/general"
+	"github.com/mong0520/ChainChronicleGo/clients"
+	"github.com/mong0520/ChainChronicleGo/clients/general"
+	"github.com/mong0520/ChainChronicleGo/utils"
 )
 
 var API_ENTRY = "quest/entry"
@@ -72,15 +72,14 @@ func (q *quest) EndQeust(u *clients.Metadata) (resp map[string]interface{}, res 
 }
 
 func (q *quest) GetTreasure(u *clients.Metadata) (resp map[string]interface{}, res int) {
-    api := "quest/treasure"
-    sid := u.Sid
-    param := map[string]interface{}{
-        "type": q.Type,
-        "qid": q.QuestId,
-    }
-    return general.GeneralAction(api, sid, param)
+	api := "quest/treasure"
+	sid := u.Sid
+	param := map[string]interface{}{
+		"type": q.Type,
+		"qid":  q.QuestId,
+	}
+	return general.GeneralAction(api, sid, param)
 }
-
 
 func GetEndpoint(version int) (endpoint string) {
 	endpoint = fmt.Sprintf("%s/%s", clients.HOST, ApiMapping[version])
@@ -105,7 +104,7 @@ func (q *quest) getEndPostBody() (body map[string]interface{}) {
 		"wc":   q.Wc,
 		"wn":   q.Wn,
 	}
-	if q.Version == 3{
+	if q.Version == 3 {
 		body["lv"] = q.Lv
 	}
 	return body
@@ -118,12 +117,12 @@ func (q *quest) getPostBody() (body map[string]interface{}) {
 		"fid":   q.Fid,
 		"pt":    q.Pt,
 		"htype": q.Htype,
-		"oc": q.Oc,
+		"oc":    q.Oc,
 	}
-	if q.Version == 3{
-	    body["lv"] = q.Lv
-	    body["hcid"] = q.Hcid
-    }
+	if q.Version == 3 {
+		body["lv"] = q.Lv
+		body["hcid"] = q.Hcid
+	}
 	return body
 }
 
@@ -142,7 +141,7 @@ func NewQuest() (q *quest) {
 		Cc:      1,
 		D:       1,
 		S:       1,
-		Oc:		 1,
+		Oc:      1,
 	}
 	return q
 }
