@@ -154,12 +154,11 @@ func start() {
 	//}
 	//dumpUser(metadata)
 	flowLoop, _ := metadata.Config.Int("GENERAL", "FlowLoop")
-	sleepDuration, _ := metadata.Config.Int("GENERAL", "FlowLoopDelay")
-
+	sleepDuration, err := metadata.Config.Int("GENERAL", "FlowLoopDelay")
 	if options.Repeat > 0 {
 		flowLoop = options.Repeat
 	}
-	if options.Timeout >= 0 {
+	if options.Timeout > 0 {
 		sleepDuration = options.Timeout
 	}
 
@@ -696,7 +695,7 @@ func doTower(metadata *clients.Metadata, section string) {
 	maxFloor := 5
 	maxQuest := 3
 	breakFloor := 5
-	breakQuest := 2
+    breakQuest := 2
 	tower.AddTicket(metadata, twid, 0, 1)
 	for floorIndex := 1; floorIndex <= maxFloor; floorIndex++ {
 		for questIndex := 1; questIndex <= maxQuest; questIndex++ {
