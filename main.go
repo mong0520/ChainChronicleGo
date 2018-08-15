@@ -976,7 +976,12 @@ func raidQuest(metadata *clients.Metadata, recovery bool, section string) {
 		case 104:
 			logger.Info("魔神體力不足")
 			if recovery {
-				if ret, err := user.RecoveryBp(0, 2, metadata.Sid); err != 0 {
+				// stone
+				// if ret, err := user.RecoveryBp(0, 2, metadata.Sid); err != 0 {
+				// super fruit
+				// if ret, err := user.RecoveryBp(1, 5, metadata.Sid); err != 0 {
+				// normal fruit
+				if ret, err := user.RecoveryBp(1, 2, metadata.Sid); err != 0 {
 					logger.Info("\t ->回復體力失敗", ret)
 				} else {
 					logger.Info("\t ->回復體力成功")
