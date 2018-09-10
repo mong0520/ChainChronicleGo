@@ -22,7 +22,7 @@ import (
 )
 
 func PostV2(requestUrl string, rawPayload string, body map[string]interface{}, sid string) (respMap map[string]interface{}, err error) {
-	//fmt.Println(requestUrl)
+	// fmt.Println(requestUrl)
 	//fmt.Println(body)
 	logger := GetLogger(nil)
 	tempNow := int(time.Now().UnixNano())

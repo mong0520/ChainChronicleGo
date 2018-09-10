@@ -34,6 +34,7 @@ type quest struct {
 	Count           int
 	Type            int
 	QuestId         int
+	QuestIds        string
 	Fid             int
 	Pt              int
 	Htype           int //unknown

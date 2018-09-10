@@ -203,12 +203,14 @@ func doDrama(metadata *clients.Metadata, section string) {
 		} else {
 			questInfo.QuestId = int(qId)
 		}
+		logger.Info(questInfo.QuestId)
 
 		counter += 1
 		if counter >= gradudateThreshold {
 			// check if current LV >= 50
 			break
 		}
+		break
 		questInfo.Fid = 1965350
 		questInfo.Lv = dramaLevel
 		questInfo.Hcid = hcid
@@ -659,8 +661,17 @@ func processGachaResult(resp map[string]interface{}) (gachaResult map[string]int
 }
 
 func doDebug(metadata *clients.Metadata, section string) {
-	api := "data/weaponlist"
+	api, _ := metadata.Config.String(section, "API")
 	param := map[string]interface{}{}
+
+	paramsRaw, _ := metadata.Config.SectionOptions(section)
+	for _, p := range paramsRaw {
+		if p == "API" {
+			continue
+		}
+		param[p], _ = metadata.Config.String(section, p)
+	}
+
 	ret, _ := general.GeneralAction(api, metadata.Sid, param)
 	logger.Info(utils.Map2JsonString(ret))
 }
@@ -695,7 +706,7 @@ func doTower(metadata *clients.Metadata, section string) {
 	maxFloor := 5
 	maxQuest := 3
 	breakFloor := 5
-    breakQuest := 2
+	breakQuest := 2
 	tower.AddTicket(metadata, twid, 0, 1)
 	for floorIndex := 1; floorIndex <= maxFloor; floorIndex++ {
 		for questIndex := 1; questIndex <= maxQuest; questIndex++ {
@@ -911,47 +922,51 @@ func doQuest(metadata *clients.Metadata, section string) {
 
 	// Read config to Struct
 	utils.ParseConfig2Struct(conf, section, questInfo)
-	current := 0
-	for {
-		current++
-		if current > count && infinite == false {
-			break
-		}
-		logger.Infof("#%d 開始關卡:[%d]", current, questInfo.QuestId)
-		resp, res := questInfo.StartQeust(metadata)
-		switch res {
-		case 0:
-			//do nothing
-		case 103:
-			logger.Info("AP 不足，使用體力果")
-			if ret := recoverAp(metadata); ret != 0 {
-				logger.Info("回復AP失敗")
+	qids := strings.Split(questInfo.QuestIds, ",")
+	for _, qid := range qids {
+		current := 0
+		for {
+			current++
+			if current > count && infinite == false {
 				break
 			}
-			current -= 1
-			continue
-		default:
-			logger.Info("未知的錯誤")
-			logger.Info(resp)
-			break
-		}
-		resp, res = questInfo.EndQeust(metadata)
-		//fmt.Println(utils.Map2JsonString(resp))
-		switch res {
-		case 0:
-			logger.Info("關卡完成")
-			//Check if need to sell cards
-		case 1:
-			logger.Info("關卡失敗，已被登出")
-		default:
-			logger.Info("未知的錯誤")
-			logger.Info(resp)
-		}
+			questInfo.QuestId, _ = strconv.Atoi(qid)
+			logger.Infof("#%d 開始關卡:[%d]", current, questInfo.QuestId)
+			resp, res := questInfo.StartQeust(metadata)
+			switch res {
+			case 0:
+				//do nothing
+			case 103:
+				logger.Info("AP 不足，使用體力果")
+				if ret := recoverAp(metadata); ret != 0 {
+					logger.Info("回復AP失敗")
+					break
+				}
+				current -= 1
+				continue
+			default:
+				logger.Info("未知的錯誤")
+				logger.Info(resp)
+				break
+			}
+			resp, res = questInfo.EndQeust(metadata)
+			//fmt.Println(utils.Map2JsonString(resp))
+			switch res {
+			case 0:
+				logger.Info("關卡完成")
+				//Check if need to sell cards
+			case 1:
+				logger.Info("關卡失敗，已被登出")
+			default:
+				logger.Info("未知的錯誤")
+				logger.Info(resp)
+			}
 
-		if questInfo.AutoRaid {
-			//time.Sleep(time.Second)
-			//logger.Info("Checking 魔神戰")
-			raidQuest(metadata, questInfo.AutoRaidRecover, section)
+			if questInfo.AutoRaid {
+				//time.Sleep(time.Second)
+				//logger.Info("Checking 魔神戰")
+				raidQuest(metadata, questInfo.AutoRaidRecover, section)
+			}
 		}
 	}
 }
