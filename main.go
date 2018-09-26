@@ -923,14 +923,17 @@ func doQuest(metadata *clients.Metadata, section string) {
 	// Read config to Struct
 	utils.ParseConfig2Struct(conf, section, questInfo)
 	qids := strings.Split(questInfo.QuestIds, ",")
-	for _, qid := range qids {
+	startQid, _ := strconv.Atoi(qids[0])
+	endQid, _ := strconv.Atoi(qids[1])
+	for qid := startQid; qid <= endQid; qid++ {
+		// for _, qid := range qids {
 		current := 0
 		for {
 			current++
 			if current > count && infinite == false {
 				break
 			}
-			questInfo.QuestId, _ = strconv.Atoi(qid)
+			questInfo.QuestId = qid
 			logger.Infof("#%d 開始關卡:[%d]", current, questInfo.QuestId)
 			resp, res := questInfo.StartQeust(metadata)
 			switch res {
