@@ -952,8 +952,8 @@ func doQuest(metadata *clients.Metadata, section string) {
 				logger.Info(resp)
 				break
 			}
-			resp, res = questInfo.EndQeust(metadata)
-			//fmt.Println(utils.Map2JsonString(resp))
+			resp, res = questInfo.EndQeustV2(metadata)
+			// fmt.Println(utils.Map2JsonString(resp))
 			switch res {
 			case 0:
 				logger.Info("關卡完成")

@@ -2,6 +2,9 @@ package quest
 
 import (
 	"fmt"
+	"net/url"
+	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -52,11 +55,227 @@ type quest struct {
 	Oc              int
 }
 
+type Wvt struct {
+	WaveNum int `json:"wave_num"`
+	Time    int `json:"time"`
+}
+
+type Mission struct {
+	Cid []int `json:"cid"`
+	Sid []int `json:"sid"`
+	Fid []int `json:"fid"`
+	Ms  int   `json:"ms"`
+	Md  int   `json:"md"`
+	Sc  struct {
+		Num0 int `json:"0"`
+		Num1 int `json:"1"`
+		Num2 int `json:"2"`
+		Num3 int `json:"3"`
+		Num4 int `json:"4"`
+	} `json:"sc"`
+	Es  int `json:"es"`
+	At  int `json:"at"`
+	He  int `json:"he"`
+	Da  int `json:"da"`
+	Ba  int `json:"ba"`
+	Bu  int `json:"bu"`
+	Job struct {
+		Num0 int `json:"0"`
+		Num1 int `json:"1"`
+		Num2 int `json:"2"`
+		Num3 int `json:"3"`
+		Num4 int `json:"4"`
+	} `json:"job"`
+	Weapon struct {
+		Num0  int `json:"0"`
+		Num1  int `json:"1"`
+		Num2  int `json:"2"`
+		Num3  int `json:"3"`
+		Num4  int `json:"4"`
+		Num5  int `json:"5"`
+		Num8  int `json:"8"`
+		Num9  int `json:"9"`
+		Num10 int `json:"10"`
+	} `json:"weapon"`
+	Box int `json:"box"`
+	Um  struct {
+		Num1 int `json:"1"`
+		Num2 int `json:"2"`
+		Num3 int `json:"3"`
+	} `json:"um"`
+	Fj   int `json:"fj"`
+	Fw   int `json:"fw"`
+	Fo   int `json:"fo"`
+	Mlv  int `json:"mlv"`
+	Mbl  int `json:"mbl"`
+	Udj  int `json:"udj"`
+	Sdmg int `json:"sdmg"`
+	Tp   int `json:"tp"`
+	Gma  int `json:"gma"`
+	Gmr  int `json:"gmr"`
+	Gmp  int `json:"gmp"`
+	Stp  int `json:"stp"`
+	Uh   struct {
+		Num3  int `json:"3"`
+		Num5  int `json:"5"`
+		Num6  int `json:"6"`
+		Num9  int `json:"9"`
+		Num14 int `json:"14"`
+		Num20 int `json:"20"`
+	} `json:"uh"`
+	Cc    int `json:"cc"`
+	BfAtk int `json:"bf_atk"`
+	BfHp  int `json:"bf_hp"`
+	BfSpd int `json:"bf_spd"`
+}
+
+// Beloved
+type BL struct {
+	SrcCid   int  `json:"src_cid"`
+	Mana     int  `json:"mana"`
+	UseSkill bool `json:"use_skill"`
+}
+
 func (q *quest) StartQeust(u *clients.Metadata) (resp map[string]interface{}, res int) {
 	requestUrl := GetEndpoint(q.Version)
 	//fmt.Printf("%+v", q)
 	postBody := q.getPostBody()
 	resp, _ = utils.PostV2(requestUrl, "", postBody, u.Sid)
+	res = int(resp["res"].(float64))
+	return resp, res
+}
+
+func (q *quest) EndQeustV2(u *clients.Metadata) (resp map[string]interface{}, res int) {
+	requestUrl := GetResultEndpoint(q.Version)
+	// nowHex := fmt.Sprintf("%x", int(time.Now().UnixNano()))
+	wvt := []Wvt{
+		{WaveNum: 1, Time: 1333}, {WaveNum: 2, Time: 1333}, {WaveNum: 3, Time: 1333},
+	}
+	// fmt.Println(wvt)
+
+	mission := Mission{
+		Cid:   []int{2219, 8900, 2228, 5227, 1245, 8194},
+		Sid:   []int{2074, 8170, 2052, 5010, 8131, 8192},
+		Fid:   []int{9222},
+		Ms:    0,
+		Md:    18934,
+		Es:    0,
+		At:    5,
+		He:    1,
+		Da:    0,
+		Ba:    0,
+		Bu:    1,
+		Box:   1,
+		Fj:    2,
+		Fw:    4,
+		Fo:    0,
+		Mlv:   80,
+		Mbl:   152,
+		Udj:   0,
+		Sdmg:  140000,
+		Tp:    8,
+		Gma:   13,
+		Gmr:   0,
+		Gmp:   0,
+		Stp:   0,
+		Cc:    1,
+		BfAtk: 0,
+		BfHp:  0,
+		BfSpd: 0,
+	}
+	mission.Sc.Num0 = 2
+	mission.Sc.Num1 = 1
+	mission.Sc.Num2 = 1
+	mission.Sc.Num3 = 1
+	mission.Sc.Num4 = 1
+
+	mission.Job.Num0 = 0
+	mission.Job.Num1 = 1
+	mission.Job.Num2 = 4
+	mission.Job.Num3 = 2
+	mission.Job.Num4 = 0
+
+	mission.Weapon.Num0 = 0
+	mission.Weapon.Num1 = 0
+	mission.Weapon.Num2 = 0
+	mission.Weapon.Num3 = 0
+	mission.Weapon.Num4 = 4
+	mission.Weapon.Num5 = 2
+	mission.Weapon.Num8 = 0
+	mission.Weapon.Num9 = 0
+	mission.Weapon.Num10 = 1
+
+	mission.Um.Num1 = 5
+	mission.Um.Num2 = 1
+	mission.Um.Num3 = 0
+
+	mission.Uh.Num3 = 1
+	mission.Uh.Num5 = 1
+	mission.Uh.Num6 = 1
+	mission.Uh.Num9 = 2
+	mission.Uh.Num14 = 1
+	mission.Uh.Num20 = 1
+	// fmt.Println(mission)
+
+	bl := []BL{
+		{SrcCid: 2033, Mana: 6, UseSkill: true},
+		{SrcCid: 2043, Mana: 6, UseSkill: true},
+		{SrcCid: 2010, Mana: 6, UseSkill: true},
+		{SrcCid: 5015, Mana: 6, UseSkill: true},
+		{SrcCid: 1023, Mana: 6, UseSkill: true},
+	}
+	// fmt.Println(bl)
+
+	blf := []BL{
+		{SrcCid: 9222, Mana: 5, UseSkill: true},
+	}
+	// fmt.Println(blf)
+
+	wvtValue := utils.Struct2JsonString(wvt)
+	// fmt.Println(wvtValue)
+
+	missionValue := utils.Struct2JsonString(mission)
+	// fmt.Println(missionValue)
+
+	blValue := utils.Struct2JsonString(bl)
+	// fmt.Println(blValue)
+
+	blfValue := utils.Struct2JsonString(blf)
+	// fmt.Println(blfValue)
+
+	queryStringPart1 := fmt.Sprintf("wvt=%s&mission=%s&bl=%s&blf=%s",
+		url.QueryEscape(wvtValue),
+		url.QueryEscape(missionValue),
+		url.QueryEscape(blValue),
+		url.QueryEscape(blfValue))
+
+	body := q.getEndPostBody()
+	tempNow := int(time.Now().UnixNano())
+	// nowShort := strconv.Itoa(int(time.Now().Unix()))
+	nowHex := fmt.Sprintf("%x", tempNow)
+	data := url.Values{}
+	for field := range body {
+		vType := reflect.TypeOf(body[field].(interface{}))
+		switch vType.String() {
+		case "int":
+			value := strconv.Itoa(body[field].(int))
+			data.Add(field, value)
+		case "string":
+			value := body[field].(string)
+			data.Add(field, value)
+		default:
+			fmt.Println("Unhandled type")
+		}
+	}
+	data.Add("cnt", nowHex)
+	queryStringPart2 := fmt.Sprintf("nature=%s&%s", url.QueryEscape(data.Encode()), queryStringPart1)
+
+	// fmt.Println("===============")
+	// fmt.Println(queryStringPart1)
+	finalPostData := fmt.Sprintf("%s&%s", queryStringPart1, url.QueryEscape(queryStringPart2))
+	// fmt.Println(finalPostData)
+
+	resp, _ = utils.PostV2(requestUrl, finalPostData, q.getEndPostBody(), u.Sid)
 	res = int(resp["res"].(float64))
 	return resp, res
 }
@@ -104,6 +323,8 @@ func (q *quest) getEndPostBody() (body map[string]interface{}) {
 		"cc":   q.Cc,
 		"wc":   q.Wc,
 		"wn":   q.Wn,
+		// "mtr":  8,
+		// "mtn":  8,
 	}
 	if q.Version == 3 {
 		body["lv"] = q.Lv
