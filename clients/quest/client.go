@@ -154,8 +154,8 @@ func (q *quest) EndQeustV2(u *clients.Metadata) (resp map[string]interface{}, re
 	// fmt.Println(wvt)
 
 	mission := Mission{
-		Cid:   []int{2219, 8900, 2228, 5227, 1245, 8194},
-		Sid:   []int{2074, 8170, 2052, 5010, 8131, 8192},
+		Cid:   []int{1213, 1216, 224, 5275, 1254, 9216},
+		Sid:   []int{0, 0, 0, 0, 0, 0},
 		Fid:   []int{9222},
 		Ms:    0,
 		Md:    18934,
@@ -218,11 +218,12 @@ func (q *quest) EndQeustV2(u *clients.Metadata) (resp map[string]interface{}, re
 	// fmt.Println(mission)
 
 	bl := []BL{
-		{SrcCid: 2033, Mana: 6, UseSkill: true},
-		{SrcCid: 2043, Mana: 6, UseSkill: true},
-		{SrcCid: 2010, Mana: 6, UseSkill: true},
-		{SrcCid: 5015, Mana: 6, UseSkill: true},
-		{SrcCid: 1023, Mana: 6, UseSkill: true},
+		{SrcCid: 1017, Mana: 6, UseSkill: true},
+		{SrcCid: 5001, Mana: 6, UseSkill: true},
+		{SrcCid: 1002, Mana: 6, UseSkill: true},
+		{SrcCid: 7012, Mana: 6, UseSkill: true},
+		{SrcCid: 1254, Mana: 6, UseSkill: true},
+		{SrcCid: 9012, Mana: 6, UseSkill: true},
 	}
 	// fmt.Println(bl)
 

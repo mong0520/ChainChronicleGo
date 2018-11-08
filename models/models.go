@@ -301,8 +301,8 @@ type GachaResult interface {
 type AllData struct {
 	Body []struct {
 		Data []map[string]interface{} `json:"data"`
-		Proc int `json:"proc"`
-		Type int `json:"type"`
+		Proc int                      `json:"proc"`
+		Type int                      `json:"type"`
 	} `json:"body"`
 	FinishedQuest []struct {
 		QuestID   int `json:"quest_id"`
@@ -340,6 +340,87 @@ type AllData struct {
 		Subjugationexpeditioninfo int `json:"subjugationexpeditioninfo"`
 		Supporterskill            int `json:"supporterskill"`
 		Teacherdisciple           int `json:"teacherdisciple"`
+		Uzuinfo                   int `json:"uzuinfo"`
+		Various                   int `json:"various"`
+		Vignette                  int `json:"vignette"`
+		Weaponcompose             int `json:"weaponcompose"`
+		Weaponcomposeevent        int `json:"weaponcomposeevent"`
+		Weaponlist                int `json:"weaponlist"`
+		Worldinfo                 int `json:"worldinfo"`
+	} `json:"mVer"`
+	Res int `json:"res"`
+}
+
+type QuestResponse struct {
+	Body []struct {
+		Data []map[string]interface{} `json:"data"`
+		Proc int                      `json:"proc"`
+		Type int                      `json:"type"`
+	} `json:"body"`
+	DiffBeloved []struct {
+		SrcCid int `json:"src_cid"`
+		Val    int `json:"val"`
+	} `json:"diff_beloved"`
+	Earns struct {
+		Bonus struct {
+			D bool `json:"d"`
+			S bool `json:"s"`
+			T bool `json:"t"`
+		} `json:"bonus"`
+		BonusGold       int  `json:"bonus_gold"`
+		CharaExp        int  `json:"chara_exp"`
+		Exp             int  `json:"exp"`
+		Gold            int  `json:"gold"`
+		IsComebackExpUp bool `json:"is_comeback_exp_up"`
+		IsNewcomerExpUp bool `json:"is_newcomer_exp_up"`
+		Point           int  `json:"point"`
+		Treasure        []struct {
+			EnemyIdx    int    `json:"enemyIdx"`
+			ID          int    `json:"id"`
+			Treasure    int    `json:"treasure"`
+			TreasureIdx int    `json:"treasureIdx"`
+			Type        string `json:"type"`
+			Val         int    `json:"val"`
+		} `json:"treasure"`
+	} `json:"earns"`
+	MVer struct {
+		Battleinfo                int `json:"battleinfo"`
+		Booklist                  int `json:"booklist"`
+		Bossinfo                  int `json:"bossinfo"`
+		Casinoinfo                int `json:"casinoinfo"`
+		Charainfo                 int `json:"charainfo"`
+		Chropowerinfo             int `json:"chropowerinfo"`
+		Coverinfo                 int `json:"coverinfo"`
+		Denju                     int `json:"denju"`
+		Enemyinfo                 int `json:"enemyinfo"`
+		Episodeinfo               int `json:"episodeinfo"`
+		Eventareainfo             int `json:"eventareainfo"`
+		Eventbadge                int `json:"eventbadge"`
+		Eventplace                int `json:"eventplace"`
+		Explorerinfo              int `json:"explorerinfo"`
+		Explorerlocation          int `json:"explorerlocation"`
+		Gachainfo                 int `json:"gachainfo"`
+		Heroicskilllist           int `json:"heroicskilllist"`
+		Homelist                  int `json:"homelist"`
+		Itemlist                  int `json:"itemlist"`
+		Missionlist               int `json:"missionlist"`
+		Motionlist                int `json:"motionlist"`
+		Openseainfo               int `json:"openseainfo"`
+		Questdigest               int `json:"questdigest"`
+		Questroute                int `json:"questroute"`
+		Questtree                 int `json:"questtree"`
+		Reload                    int `json:"reload"`
+		Repeatmissionlist         int `json:"repeatmissionlist"`
+		Servertime                int `json:"servertime"`
+		Skilllist                 int `json:"skilllist"`
+		Sortieinfo                int `json:"sortieinfo"`
+		SoundExData               int `json:"soundExData"`
+		Spdrama                   int `json:"spdrama"`
+		Speedruninfo              int `json:"speedruninfo"`
+		Subjugationexpeditioninfo int `json:"subjugationexpeditioninfo"`
+		Supporterskill            int `json:"supporterskill"`
+		Teacherdisciple           int `json:"teacherdisciple"`
+		Towerinfo                 int `json:"towerinfo"`
 		Uzuinfo                   int `json:"uzuinfo"`
 		Various                   int `json:"various"`
 		Vignette                  int `json:"vignette"`

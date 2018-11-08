@@ -705,8 +705,8 @@ func doTower(metadata *clients.Metadata, section string) {
 
 	maxFloor := 5
 	maxQuest := 3
-	breakFloor := 5
-	breakQuest := 2
+	breakFloor, _ := metadata.Config.Int(section, "Floor")
+	breakQuest, _ := metadata.Config.Int(section, "Quest")
 	tower.AddTicket(metadata, twid, 0, 1)
 	for floorIndex := 1; floorIndex <= maxFloor; floorIndex++ {
 		for questIndex := 1; questIndex <= maxQuest; questIndex++ {
@@ -731,7 +731,7 @@ func doTower(metadata *clients.Metadata, section string) {
 				// 	return
 				// } else {
 				// 	logger.Info("回復成功")
-				// 	// doTower(metadata, section)
+                // 	// doTower(metadata, section)
 				// }
 				return
 			case 3305:
@@ -915,6 +915,7 @@ func doQuest(metadata *clients.Metadata, section string) {
 	conf := metadata.Config
 	questInfo := quest.NewQuest()
 	count, _ := conf.Int(section, "Count")
+	isAutoSell, _ := conf.Bool(section, "AutoSell")
 	infinite := false
 	if count == -1 {
 		infinite = true
@@ -953,7 +954,16 @@ func doQuest(metadata *clients.Metadata, section string) {
 				break
 			}
 			resp, res = questInfo.EndQeustV2(metadata)
-			// fmt.Println(utils.Map2JsonString(resp))
+			questRet := models.QuestResponse{}
+			utils.Map2Struct(resp, &questRet)
+			earned := questRet.Body[1].Data
+			for _, item := range earned {
+				if val, ok := item["idx"]; ok && isAutoSell {
+					cid := int(val.(float64))
+					doSellItem(metadata, cid, "")
+				}
+			}
+
 			switch res {
 			case 0:
 				logger.Info("關卡完成")
