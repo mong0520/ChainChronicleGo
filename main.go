@@ -731,7 +731,7 @@ func doTower(metadata *clients.Metadata, section string) {
 				// 	return
 				// } else {
 				// 	logger.Info("回復成功")
-                // 	// doTower(metadata, section)
+				// 	// doTower(metadata, section)
 				// }
 				return
 			case 3305:
@@ -1089,7 +1089,7 @@ func doResetDisciple(metadata *clients.Metadata, section string) {
 }
 
 func doCompose(metadata *clients.Metadata, section string) {
-	mockList := []int{26217, 26217, 26217, 26217, 26217}
+	mockList := []int{26218, 26218, 26218, 26218, 26218}
 	ret, _ := weapon.Compose(metadata, mockList, -1)
 	logger.Info(ret)
 	return
