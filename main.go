@@ -1089,7 +1089,9 @@ func doResetDisciple(metadata *clients.Metadata, section string) {
 }
 
 func doCompose(metadata *clients.Metadata, section string) {
-	mockList := []int{26218, 26218, 26218, 26218, 26218}
+	// 26218 忌神之火種
+	// 26217 忌神之燈
+	mockList := []int{26217, 26217, 26217, 26217, 26217}
 	ret, _ := weapon.Compose(metadata, mockList, -1)
 	logger.Info(ret)
 	return
