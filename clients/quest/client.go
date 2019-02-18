@@ -154,7 +154,7 @@ func (q *quest) EndQeustV2(u *clients.Metadata) (resp map[string]interface{}, re
 	// fmt.Println(wvt)
 
 	mission := Mission{
-		Cid:   []int{1213, 1216, 224, 5275, 1254, 9216},
+		Cid:   []int{202, 201, 2202, 6201, 4201, 59017},
 		Sid:   []int{0, 0, 0, 0, 0, 0},
 		Fid:   []int{9222},
 		Ms:    0,

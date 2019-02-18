@@ -929,6 +929,7 @@ func doQuest(metadata *clients.Metadata, section string) {
 	for qid := startQid; qid <= endQid; qid++ {
 		// for _, qid := range qids {
 		current := 0
+	L_CurrentQuest:
 		for {
 			current++
 			if current > count && infinite == false {
@@ -950,8 +951,8 @@ func doQuest(metadata *clients.Metadata, section string) {
 				continue
 			default:
 				logger.Info("未知的錯誤")
-				logger.Info(resp)
-				break
+				// logger.Info(resp)
+				break L_CurrentQuest
 			}
 			resp, res = questInfo.EndQeustV2(metadata)
 			questRet := models.QuestResponse{}
