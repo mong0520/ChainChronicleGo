@@ -21,6 +21,53 @@ import (
 	"github.com/robfig/config"
 )
 
+func SimpePost(url string, fields map[string]string, sid string) (string, error) {
+	var r http.Request
+	tempNow := int(time.Now().UnixNano())
+	nowShort := strconv.Itoa(int(time.Now().Unix()))
+	nowHex := fmt.Sprintf("%x", tempNow)
+
+	r.ParseForm()
+	for key, value := range fields {
+		r.Form.Add(key, value)
+	}
+	r.Form.Add("cnt", nowHex)
+	r.Form.Add("timestamp", nowShort)
+	bodystr := strings.TrimSpace(r.Form.Encode())
+	r.Form.Add("nature", bodystr)
+	bodystr = strings.TrimSpace(r.Form.Encode())
+	request, err := http.NewRequest("POST", url, strings.NewReader(bodystr))
+	if err != nil {
+		fmt.Println(err)
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Connection", "Keep-Alive")
+	request.AddCookie(&http.Cookie{
+		Name:  "sid",
+		Value: sid,
+	})
+
+	var resp *http.Response
+	resp, err = http.DefaultClient.Do(request)
+	if err != nil {
+		fmt.Println(err)
+	}
+	// Read response
+	ret, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("ioutil.ReadAll() error: %v\n", err)
+		return "", err
+	}
+
+	// Unzip response body
+	respByte, err := DecodeResponseV2(ret)
+	if err != nil {
+		return "nil", err
+	}
+
+	return string(respByte), nil
+}
+
 func PostV2(requestUrl string, rawPayload string, body map[string]interface{}, sid string) (respMap map[string]interface{}, err error) {
 	// fmt.Println(requestUrl)
 	//fmt.Println(body)

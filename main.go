@@ -76,7 +76,7 @@ var actionMapping = map[string]interface{}{
 	"EXPLORER":       doExplorer,
 	"TOWER":          doTower,
 	"WASTE":          doWasteMoney,
-	"UZUINFO":        doUzuInfo,
+	"SHOWUZU":        doShowUZU,
 	"UZU":            doUzu,
 }
 
@@ -144,6 +144,7 @@ func start() {
 		logger.Infof("%s\n", err)
 		return
 	}
+	fmt.Println("sid = ", sid)
 	alldata, _ := user.GetAllData(sid)
 	metadata.AllData = alldata
 	metadata.Sid = sid
@@ -664,7 +665,7 @@ func processGachaResult(resp map[string]interface{}) (gachaResult map[string]int
 	return gachaResult
 }
 
-func doUzuInfo(metadata *clients.Metadata, section string) {
+func doShowUZU(metadata *clients.Metadata, section string) {
 	uzuData, _ := uzu.GetUzuInfo(metadata.Sid)
 	uzuHistoryStr, _ := json.Marshal(metadata.AllData["body"].([]interface{})[27].(map[string]interface{})["data"])
 	uzuHistories := uzu.UzuHistoryStruct{}
