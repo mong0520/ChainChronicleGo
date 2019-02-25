@@ -671,7 +671,7 @@ func doShowUZU(metadata *clients.Metadata, section string) {
 	uzuHistories := uzu.UzuHistoryStruct{}
 	json.Unmarshal([]byte(uzuHistoryStr), &uzuHistories)
 
-	logger.Debug("UZUID \tName\t\tScheduleID\tLastScheduleID\tFinishedStage")
+	logger.Debug("UZUID \tName\t\tScheduleID\tLastScheduleID\tFinishedStage(idx start from 1)")
 	for idx, uzu := range uzuData.Uzu {
 		currentScheduleID := uzuData.GetCurrentScheduleID(uzu.UzuID)
 		clearList := uzuHistories[idx].ClearList

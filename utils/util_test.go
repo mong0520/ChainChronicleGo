@@ -19,7 +19,7 @@ func TestSimpePost(t *testing.T) {
 		"uzid":  "7",
 		"scid":  "42",
 		"pt":    "0",
-		"st":    "9",
+		"st":    "10",
 	}
 
 	myField := map[string]string{
@@ -34,8 +34,8 @@ func TestSimpePost(t *testing.T) {
 		wantRespMap map[string]interface{}
 		wantErr     bool
 	}{
-		{name: "test01", args: args{url: urlEntry, fields: myFieldEntry, sid: "eb16d7180f1f8d041a3bd2f89f0ba5c5"}, wantRespMap: nil, wantErr: false},
-		{name: "test02", args: args{url: url, fields: myField, sid: "eb16d7180f1f8d041a3bd2f89f0ba5c5"}, wantRespMap: nil, wantErr: false},
+		{name: "test01", args: args{url: urlEntry, fields: myFieldEntry, sid: "157af3ac3707eeaac9795fee0b9cea73"}, wantRespMap: nil, wantErr: false},
+		{name: "test02", args: args{url: url, fields: myField, sid: "157af3ac3707eeaac9795fee0b9cea73"}, wantRespMap: nil, wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
