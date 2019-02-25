@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"strings"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/mong0520/ChainChronicleGo/clients/session"
 	"github.com/mong0520/ChainChronicleGo/clients/tower"
 	"github.com/mong0520/ChainChronicleGo/clients/user"
+	"github.com/mong0520/ChainChronicleGo/clients/uzu"
 	"github.com/mong0520/ChainChronicleGo/models"
 	"github.com/mong0520/ChainChronicleGo/utils"
 
@@ -74,6 +76,8 @@ var actionMapping = map[string]interface{}{
 	"EXPLORER":       doExplorer,
 	"TOWER":          doTower,
 	"WASTE":          doWasteMoney,
+	"UZUINFO":        doUzuInfo,
+	"UZU":            doUzu,
 }
 
 func doAction(sectionName string) {
@@ -658,6 +662,47 @@ func processGachaResult(resp map[string]interface{}) (gachaResult map[string]int
 	gachaResult["item"] = itemList
 
 	return gachaResult
+}
+
+func doUzuInfo(metadata *clients.Metadata, section string) {
+	uzuData, _ := uzu.GetUzuInfo(metadata.Sid)
+	uzuHistoryStr, _ := json.Marshal(metadata.AllData["body"].([]interface{})[27].(map[string]interface{})["data"])
+	uzuHistories := uzu.UzuHistoryStruct{}
+	json.Unmarshal([]byte(uzuHistoryStr), &uzuHistories)
+
+	logger.Debug("UZUID \tName\t\tScheduleID\tLastScheduleID\tFinishedStage")
+	for idx, uzu := range uzuData.Uzu {
+		currentScheduleID := uzuData.GetCurrentScheduleID(uzu.UzuID)
+		clearList := uzuHistories[idx].ClearList
+		lastScheduleID := uzuHistories[idx].LastScheduleID
+		logger.Debugf("%d\t%s\t%d\t\t%d\t\t%v", uzu.UzuID, uzu.Name, currentScheduleID, lastScheduleID, clearList)
+	}
+}
+
+func doUzu(metadata *clients.Metadata, section string) {
+	// Entry qeust
+	api := "uzu/entry"
+	param := map[string]interface{}{}
+
+	paramsRaw, _ := metadata.Config.SectionOptions(section)
+	for _, p := range paramsRaw {
+		param[p], _ = metadata.Config.String(section, p)
+	}
+	param["fid"] = 1965350
+	param["htype"] = 0
+
+	logger.Debugf("Start UZU with Options %+v", param)
+	ret, _ := general.GeneralAction(api, metadata.Sid, param)
+	logger.Info(utils.Map2JsonString(ret))
+
+	// End Quest
+	api = "uzu/result"
+	paramResult := map[string]interface{}{}
+	paramResult["res"] = 1
+	paramResult["uzid"] = param["uzid"]
+	logger.Debugf("End UZU with Options %+v", paramResult)
+	ret, _ = general.GeneralAction(api, metadata.Sid, paramResult)
+	logger.Info(utils.Map2JsonString(ret))
 }
 
 func doDebug(metadata *clients.Metadata, section string) {
