@@ -495,7 +495,7 @@ func doExplorer(metadata *clients.Metadata, section string) {
 					"location_id":  area,
 					"card_idx":     result["idx"],
 					"pickup":       1,
-					"interval":     2,
+					"interval":     1,
 				}
 				resp, err := explorer.StartExplorer(metadata.Sid, param)
 				switch err {
