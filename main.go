@@ -303,7 +303,7 @@ func doTutorial(metadata *clients.Metadata, section string) {
 		{"tid": 19, "qid": -1},
 		{"tid": 20, "qid": -1},
 	}
-	newUid := fmt.Sprintf("ANDO%s", uuid.Must(uuid.NewV4()).String())
+	newUid := fmt.Sprintf("ANDO%s", uuid.Must(uuid.NewV4(), nil).String())
 	logger.Infof("New UUID = %s", newUid)
 	// set tor proxy
 	sid, err := session.Login(newUid, "", false)
