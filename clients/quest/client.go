@@ -324,8 +324,8 @@ func (q *quest) getEndPostBody() (body map[string]interface{}) {
 		"cc":   q.Cc,
 		"wc":   q.Wc,
 		"wn":   q.Wn,
-		// "mtr":  8,
-		// "mtn":  8,
+		"mtr":  8,
+		"mtn":  8,
 	}
 	if q.Version == 3 {
 		body["lv"] = q.Lv
