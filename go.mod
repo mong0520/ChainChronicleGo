@@ -3,11 +3,14 @@ module github.com/mong0520/ChainChronicleGo
 go 1.12
 
 require (
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.7.1
 	github.com/goinggo/mapstructure v0.0.0-20140717182941-194205d9b4a9
 	github.com/icza/dyno v0.0.0-20180601094105-0c96289f9585
 	github.com/jessevdk/go-flags v1.4.0
 	github.com/kr/pretty v0.1.0 // indirect
+	github.com/line/line-bot-sdk-go v6.3.0+incompatible
+	github.com/looplab/fsm v0.1.0
 	github.com/oleiade/reflections v1.0.0
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7
 	github.com/robfig/config v0.0.0-20141207224736-0f78529c8c7e

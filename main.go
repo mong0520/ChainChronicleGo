@@ -3,8 +3,11 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"net/http"
 	"strings"
 
+	"github.com/line/line-bot-sdk-go/linebot"
+	"github.com/mong0520/ChainChronicleGo/ccfsm"
 	"github.com/mong0520/ChainChronicleGo/clients"
 	"github.com/mong0520/ChainChronicleGo/clients/item"
 	"github.com/mong0520/ChainChronicleGo/clients/quest"
@@ -22,7 +25,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/deckarep/golang-set"
+	mapset "github.com/deckarep/golang-set"
 	"github.com/icza/dyno"
 	"github.com/jessevdk/go-flags"
 	"github.com/mong0520/ChainChronicleGo/clients/card"
@@ -37,9 +40,17 @@ import (
 	"github.com/mong0520/ChainChronicleGo/controllers"
 	"github.com/op/go-logging"
 	"github.com/robfig/config"
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+)
+
+const (
+	ModeHttp  string = "http"
+	ModeHttps string = "https"
+
+	SSLCertPath       string = "/path/to/ssl"
+	SSLPrivateKeyPath string = "/path/to/ssl"
 )
 
 type Options struct {
@@ -47,8 +58,12 @@ type Options struct {
 	Action     string `short:"a" long:"action" description:"Action to run" required:"false"`
 	Repeat     int    `short:"r" long:"repeat" description:"Repeat action for r times" required:"false"`
 	Timeout    int    `short:"t" long:"timeout" description:"Timeout in seconds between repeat" required:"false"`
+	Mode       string `short:"m" long:"mode" description:"Chatbot mode or cli mode" required:"false" default:"cli"`
 }
 
+var state = ccfsm.NewGacha()
+var bot *linebot.Client
+var lineReplyMessage string
 var options Options
 var parser = flags.NewParser(&options, flags.Default)
 var metadata = &clients.Metadata{}
@@ -129,6 +144,7 @@ func start() {
 	//logger.Info(uid)
 	token, _ := metadata.Config.String("GENERAL", "Token")
 	metadata.Token = token
+
 	if options.Action == "" {
 		flowString, _ := metadata.Config.String("GENERAL", "Flow")
 		flowString = strings.Replace(flowString, " ", "", -1)
@@ -158,6 +174,10 @@ func start() {
 	//	log.Println(metadata.AllDataS)
 	//}
 	//dumpUser(metadata)
+	if options.Mode == "d" {
+		fmt.Println("Start daemon mode...")
+		InitLineBot(metadata)
+	}
 	flowLoop, _ := metadata.Config.Int("GENERAL", "FlowLoop")
 	sleepDuration, err := metadata.Config.Int("GENERAL", "FlowLoopDelay")
 	if options.Repeat > 0 {
@@ -365,6 +385,7 @@ func doTutorial(metadata *clients.Metadata, section string) {
 }
 
 func doGacha(metadata *clients.Metadata, section string) {
+	var result strings.Builder
 	gachaInfo := gacha.NewGachaInfo()
 	utils.ParseConfig2Struct(metadata.Config, section, gachaInfo)
 	logger.Info("開始轉蛋")
@@ -374,6 +395,8 @@ func doGacha(metadata *clients.Metadata, section string) {
 			myCard := models.Charainfo{}
 			query := bson.M{"cid": card.ID}
 			controllers.GeneralQuery(metadata.DB, "charainfo", query, &myCard)
+			msg := fmt.Sprintf("得到 %d星卡: %s-%s", myCard.Rarity, myCard.Title, myCard.Name)
+			result.WriteString(msg)
 			//logger.Infof("得到 %d星卡: %s-%s", myCard.Rarity, myCard.Title, myCard.Name)
 			if gachaInfo.AutoSell && myCard.Rarity <= gachaInfo.AutoSellRarityThreshold {
 				logger.Info("賣出卡片...")
@@ -382,8 +405,11 @@ func doGacha(metadata *clients.Metadata, section string) {
 		}
 
 	} else {
+		result.WriteString("轉蛋失敗，請查看訊息記錄")
 		logger.Info(utils.Map2JsonString(resp))
 	}
+
+	lineReplyMessage = result.String()
 }
 
 func doSellItem(metadata *clients.Metadata, cid int, section string) {
@@ -888,6 +914,7 @@ func doTakeOver(metadata *clients.Metadata, section string) {
 }
 
 func doStatus(metadata *clients.Metadata, section string) {
+	var result strings.Builder
 	targets := []string{"comment", "uid", "heroName", "open_id", "lv", "cardMax", "accept_disciple", "name",
 		"friendCnt", "only_friend_disciple", "staminaMax", "zuLastRefilledScheduleId", "uzu_key"}
 	itemMapping := map[int]string{
@@ -901,7 +928,9 @@ func doStatus(metadata *clients.Metadata, section string) {
 	}
 	specialData := metadata.AllData["body"].([]interface{})[8].(map[string]interface{})["data"]
 	stoneCount := metadata.AllData["body"].([]interface{})[12].(map[string]interface{})["data"]
-	logger.Infof("精靈石 = %.0f\n", stoneCount.(float64))
+	msg := fmt.Sprintf("精靈石 = %.0f\n", stoneCount.(float64))
+	logger.Infof(msg)
+	result.WriteString(msg)
 	for _, item := range specialData.([]interface{}) {
 		itemId := item.(map[string]interface{})["item_id"]
 		cnt := item.(map[string]interface{})["cnt"]
@@ -911,9 +940,13 @@ func doStatus(metadata *clients.Metadata, section string) {
 		if val, ok := itemMapping[int(itemId.(float64))]; ok {
 			switch reflect.TypeOf(cnt).Kind() {
 			case reflect.String:
-				logger.Infof("%s = %s\n", val, cnt.(string))
+				msg = fmt.Sprintf("%s = %s\n", val, cnt.(string))
+				logger.Infof(msg)
+				result.WriteString(msg)
 			case reflect.Float64:
-				logger.Infof("%s = %.0f\n", val, cnt.(float64))
+				msg = fmt.Sprintf("%s = %.0f\n", val, cnt.(float64))
+				logger.Infof(msg)
+				result.WriteString(msg)
 			}
 		}
 	}
@@ -924,12 +957,18 @@ func doStatus(metadata *clients.Metadata, section string) {
 		if utils.InArray(k, targets) {
 			switch v.(type) {
 			case float64, float32:
-				logger.Infof("%s = %.0f\n", k, v)
+				msg = fmt.Sprintf("%s = %.0f\n", k, v)
+				logger.Infof(msg)
+				result.WriteString(msg)
 			default:
-				logger.Infof("%s = %v\n", k, v)
+				msg = fmt.Sprintf("%s = %v\n", k, v)
+				logger.Infof(msg)
+				result.WriteString(msg)
 			}
 		}
 	}
+
+	lineReplyMessage = result.String()
 }
 
 func doShowAllData(metadata *clients.Metadata, section string) {
@@ -1259,4 +1298,126 @@ func main() {
 
 func dumpUser(u *clients.Metadata) {
 	logger.Infof("%+v\n", *u)
+}
+
+func InitLineBot(m *clients.Metadata) {
+	var err error
+	metadata = m
+	secret := "bd47bbcb49b833502faef84d948a6eb9"
+
+	token := "eXcWgfxqFt/IC+LIUgNqF5FcJda4drsxwgM6ioBPZ6uAM0jcpRN3hlblRRbm7I2Tw/xy3mJcNFiX+Ic1dru04JjG9pPuwSGJwhA+4Rwr3yj15JNHO86OqYpMLApw3Mh//zGckyt2QSyPZViUjOZ4WgdB04t89/1O/w1cDnyilFU="
+	bot, err = linebot.New(secret, token)
+	if err != nil {
+		log.Println(err)
+	}
+	//log.Println("Bot:", bot, " err:", err)
+	http.HandleFunc("/callback", callbackHandler)
+	// port := os.Getenv("PORT")
+	port := "8080"
+	addr := fmt.Sprintf(":%s", port)
+	runMode := ModeHttp
+	log.Printf("Run Mode = %s\n", runMode)
+	if strings.ToLower(runMode) == ModeHttps {
+		log.Printf("Secure listen on %s with \n", addr)
+		err := http.ListenAndServeTLS(addr, SSLCertPath, SSLPrivateKeyPath, nil)
+		if err != nil {
+			log.Panic(err)
+		}
+	} else {
+		log.Printf("Listen on %s\n", addr)
+		err := http.ListenAndServe(addr, nil)
+		if err != nil {
+			log.Panic(err)
+		}
+	}
+
+}
+
+func callbackHandler(w http.ResponseWriter, r *http.Request) {
+	events, err := bot.ParseRequest(r)
+
+	if err != nil {
+		if err == linebot.ErrInvalidSignature {
+			w.WriteHeader(400)
+		} else {
+			w.WriteHeader(500)
+		}
+		return
+	}
+
+	for _, event := range events {
+		if event.Type == linebot.EventTypeMessage {
+
+			switch message := event.Message.(type) {
+			case *linebot.TextMessage:
+				log.Println("Text = ", message.Text)
+				textHander(event, message.Text)
+			default:
+				log.Println("Unimplemented handler for event type ", event.Type)
+			}
+		} else if event.Type == linebot.EventTypePostback {
+			log.Println("got a postback event")
+			log.Println(event.Postback.Data)
+			postbackHandler(event)
+
+		} else {
+			log.Printf("got a %s event\n", event.Type)
+		}
+	}
+}
+
+func textHander(event *linebot.Event, message string) {
+	dispatchAction(event, message)
+	// sendTextMessage(event, metadata.Sid)
+}
+
+func dispatchAction(event *linebot.Event, action string) {
+	currentState := state.FSM.Current()
+	logger.Debugf("Current state = %s", currentState)
+	lineReplyMessage = currentState
+	fmt.Println(event.Source)
+
+	if state.FSM.Is(ccfsm.READY) && action == "gacha" {
+		state.FSM.SetState(ccfsm.GACHA_READY)
+		state.FSM.Event(ccfsm.GACHA_SELECT_POOL)
+		lineReplyMessage = "請輸入轉蛋池代號"
+	} else if state.FSM.Is(ccfsm.GACHA_SELECT_POOL) {
+		metadata.Config.RemoveOption("GACHA_EVENT", "Type")
+		metadata.Config.AddOption("GACHA_EVENT", "Type", action)
+		state.FSM.SetState(ccfsm.GACHA_SELECT_POOL)
+		state.FSM.Event(ccfsm.GACHA_SELECT_COUNT)
+		lineReplyMessage = "請輸入轉蛋的次數"
+	} else if state.FSM.Is(ccfsm.GACHA_SELECT_COUNT) {
+		state.FSM.SetState(ccfsm.READY)
+		state.FSM.Event(ccfsm.READY)
+		pool, _ := metadata.Config.String("GACHA_EVENT", "Type")
+		lineReplyMessage = "開始在轉蛋池 " + pool + " 進行 " + action + " 連抽啦"
+		finalMessage := ""
+		gachaCount, _ := strconv.Atoi(action)
+		for i := 0; i < gachaCount; i++ {
+			doGacha(metadata, "GACHA_EVENT")
+			finalMessage = finalMessage + lineReplyMessage + "\r\n"
+			time.Sleep(3 * time.Second)
+		}
+		lineReplyMessage = finalMessage
+	} else {
+		lineReplyMessage = "我不知道你想做什麼"
+	}
+	sendTextMessage(event, lineReplyMessage)
+}
+
+func postbackHandler(event *linebot.Event) {
+	sendTextMessage(event, "got postback message")
+}
+
+func sendTextMessage(event *linebot.Event, text string) {
+	if _, err := bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(text)).Do(); err != nil {
+		log.Println(err)
+	}
+}
+
+func pushTextMessage(uid string, text string) {
+	if _, err := bot.PushMessage(uid, linebot.NewTextMessage(text)).Do(); err != nil {
+		log.Println(err)
+	}
 }
