@@ -18,6 +18,8 @@ import (
 	"github.com/mong0520/ChainChronicleGo/models"
 	"github.com/mong0520/ChainChronicleGo/utils"
 
+	"github.com/gomodule/redigo/redis"
+
 	"fmt"
 	"os"
 	"path"
@@ -61,7 +63,6 @@ type Options struct {
 	Mode       string `short:"m" long:"mode" description:"Chatbot mode or cli mode" required:"false" default:"cli"`
 }
 
-var state = ccfsm.NewGacha()
 var bot *linebot.Client
 var lineReplyMessage string
 var options Options
@@ -136,6 +137,13 @@ func start() {
 	} else {
 		metadata.DB = db
 	}
+
+	c, err := redis.Dial("tcp", ":6379")
+	if err != nil {
+		logger.Fatal(err)
+	}
+	metadata.RedisConn = c
+	defer c.Close()
 
 	//utils.DumpConfig(metadata.Config)
 	uid, _ := metadata.Config.String("GENERAL", "Uid")
@@ -1303,9 +1311,8 @@ func dumpUser(u *clients.Metadata) {
 func InitLineBot(m *clients.Metadata) {
 	var err error
 	metadata = m
-	secret := "bd47bbcb49b833502faef84d948a6eb9"
-
-	token := "eXcWgfxqFt/IC+LIUgNqF5FcJda4drsxwgM6ioBPZ6uAM0jcpRN3hlblRRbm7I2Tw/xy3mJcNFiX+Ic1dru04JjG9pPuwSGJwhA+4Rwr3yj15JNHO86OqYpMLApw3Mh//zGckyt2QSyPZViUjOZ4WgdB04t89/1O/w1cDnyilFU="
+	secret := os.Getenv("LINE_SECRET")
+	token := os.Getenv("LINE_TOKEN")
 	bot, err = linebot.New(secret, token)
 	if err != nil {
 		log.Println(err)
@@ -1350,46 +1357,56 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 
 			switch message := event.Message.(type) {
 			case *linebot.TextMessage:
-				log.Println("Text = ", message.Text)
+				logger.Debugf("Text = ", message.Text)
 				textHander(event, message.Text)
 			default:
-				log.Println("Unimplemented handler for event type ", event.Type)
+				logger.Debug("Unimplemented handler for event type ", event.Type)
 			}
 		} else if event.Type == linebot.EventTypePostback {
-			log.Println("got a postback event")
-			log.Println(event.Postback.Data)
+			logger.Debug("got a postback event")
+			logger.Debug(event.Postback.Data)
 			postbackHandler(event)
 
 		} else {
-			log.Printf("got a %s event\n", event.Type)
+			logger.Debugf("got a %s event\n", event.Type)
 		}
 	}
 }
 
 func textHander(event *linebot.Event, message string) {
+	// force login again
+	sid, err := session.Login(metadata.Uid, metadata.Token, false)
+	if err != nil {
+		logger.Error(err)
+	}
+
+	metadata.Sid = sid
 	dispatchAction(event, message)
 	// sendTextMessage(event, metadata.Sid)
 }
 
 func dispatchAction(event *linebot.Event, action string) {
-	currentState := state.FSM.Current()
+	currentState, err := redis.String(metadata.RedisConn.Do("GET", event.Source.UserID+":state"))
+	if err != nil || currentState == "" {
+		currentState = ccfsm.READY
+	}
 	logger.Debugf("Current state = %s", currentState)
 	lineReplyMessage = currentState
-	fmt.Println(event.Source)
 
-	if state.FSM.Is(ccfsm.READY) && action == "gacha" {
-		state.FSM.SetState(ccfsm.GACHA_READY)
-		state.FSM.Event(ccfsm.GACHA_SELECT_POOL)
+	if action == "reset" {
+		lineReplyMessage = "重設對話狀態完成"
+		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.READY)
+	} else if currentState == ccfsm.READY && action == "gacha" {
+		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.GACHA_SELECT_POOL)
 		lineReplyMessage = "請輸入轉蛋池代號"
-	} else if state.FSM.Is(ccfsm.GACHA_SELECT_POOL) {
+	} else if currentState == ccfsm.READY && action == "status" {
+		doStatus(metadata, "")
+	} else if currentState == ccfsm.GACHA_SELECT_POOL {
 		metadata.Config.RemoveOption("GACHA_EVENT", "Type")
 		metadata.Config.AddOption("GACHA_EVENT", "Type", action)
-		state.FSM.SetState(ccfsm.GACHA_SELECT_POOL)
-		state.FSM.Event(ccfsm.GACHA_SELECT_COUNT)
+		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.GACHA_SELECT_COUNT)
 		lineReplyMessage = "請輸入轉蛋的次數"
-	} else if state.FSM.Is(ccfsm.GACHA_SELECT_COUNT) {
-		state.FSM.SetState(ccfsm.READY)
-		state.FSM.Event(ccfsm.READY)
+	} else if currentState == ccfsm.GACHA_SELECT_COUNT {
 		pool, _ := metadata.Config.String("GACHA_EVENT", "Type")
 		lineReplyMessage = "開始在轉蛋池 " + pool + " 進行 " + action + " 連抽啦"
 		finalMessage := ""
@@ -1397,9 +1414,10 @@ func dispatchAction(event *linebot.Event, action string) {
 		for i := 0; i < gachaCount; i++ {
 			doGacha(metadata, "GACHA_EVENT")
 			finalMessage = finalMessage + lineReplyMessage + "\r\n"
-			time.Sleep(3 * time.Second)
+			time.Sleep(2 * time.Second)
 		}
 		lineReplyMessage = finalMessage
+		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.READY)
 	} else {
 		lineReplyMessage = "我不知道你想做什麼"
 	}
@@ -1416,6 +1434,7 @@ func sendTextMessage(event *linebot.Event, text string) {
 	}
 }
 
+// Not supported
 func pushTextMessage(uid string, text string) {
 	if _, err := bot.PushMessage(uid, linebot.NewTextMessage(text)).Do(); err != nil {
 		log.Println(err)
