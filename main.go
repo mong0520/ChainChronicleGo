@@ -50,9 +50,6 @@ import (
 const (
 	ModeHttp  string = "http"
 	ModeHttps string = "https"
-
-	SSLCertPath       string = "/path/to/ssl"
-	SSLPrivateKeyPath string = "/path/to/ssl"
 )
 
 type Options struct {
@@ -1389,6 +1386,8 @@ func InitLineBot(m *clients.Metadata) {
 	metadata = m
 	secret := os.Getenv("LINE_SECRET")
 	token := os.Getenv("LINE_TOKEN")
+	SSLCertPath := os.Getenv("SSL_CERT_PATH")
+	SSLPrivateKeyPath := os.Getenv("SSL_PRIVATE_KEY_PATH")
 	bot, err = linebot.New(secret, token)
 	if err != nil {
 		log.Println(err)
