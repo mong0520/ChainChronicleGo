@@ -1466,7 +1466,7 @@ func dispatchAction(event *linebot.Event, action string) {
 		currentState = ccfsm.READY
 	}
 	logger.Debugf("Action = %s", action)
-	logger.Debugf("Current state = %s", currentState)
+	logger.Debugf("current state = %s", currentState)
 	lineReplyMessage = currentState
 
 	if action == "reset" {
