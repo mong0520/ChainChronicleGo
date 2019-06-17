@@ -1488,6 +1488,7 @@ func dispatchAction(event *linebot.Event, action string) {
 		metadata.Config.AddOption("TOWER", "MaxFloor", action)
 		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.READY)
 		doTower(metadata, "TOWER")
+		lineReplyMessage = "完成"
 	} else if currentState == ccfsm.READY && action == "status" {
 		doStatus(metadata, "")
 	} else if currentState == ccfsm.GACHA_SELECT_POOL {
