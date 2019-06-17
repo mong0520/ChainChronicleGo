@@ -8,6 +8,7 @@ const (
 	GACHA_ACTION       = "gacha_action"
 	TOWER_SELECT_ID    = "tower_select_id"
 	TOWER_SELECT_MAX   = "tower_select_max"
+	QUEST_QUERY        = "quest_query_name"
 
 	STATUS_READY = "status_ready"
 )

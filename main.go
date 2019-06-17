@@ -1472,6 +1472,17 @@ func dispatchAction(event *linebot.Event, action string) {
 	if action == "reset" {
 		lineReplyMessage = "重設對話狀態完成"
 		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.READY)
+	} else if currentState == ccfsm.READY && action == "quest_query" {
+		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.QUEST_QUERY)
+		lineReplyMessage = "請輸入關卡名稱"
+	} else if currentState == ccfsm.QUEST_QUERY {
+		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.READY)
+		quest, err := controllers.GetQuestByName(metadata.DB, action)
+		if err != nil {
+			lineReplyMessage = err.Error()
+		} else {
+			lineReplyMessage = fmt.Sprintf("%s 的 ID 為 %d", action, quest.QuestID)
+		}
 	} else if currentState == ccfsm.READY && action == "gacha" {
 		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.GACHA_SELECT_POOL)
 		lineReplyMessage = "請輸入轉蛋池代號"
