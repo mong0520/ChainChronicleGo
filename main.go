@@ -1395,7 +1395,7 @@ func InitLineBot(m *clients.Metadata) {
 	//log.Println("Bot:", bot, " err:", err)
 	http.HandleFunc("/callback", callbackHandler)
 	// port := os.Getenv("PORT")
-	port := "8080"
+	port := "8443"
 	addr := fmt.Sprintf(":%s", port)
 	runMode := ModeHttps
 	log.Printf("Run Mode = %s\n", runMode)
