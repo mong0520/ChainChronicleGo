@@ -1465,6 +1465,7 @@ func dispatchAction(event *linebot.Event, action string) {
 	if err != nil || currentState == "" {
 		currentState = ccfsm.READY
 	}
+	logger.Debugf("Action = %s", action)
 	logger.Debugf("Current state = %s", currentState)
 	lineReplyMessage = currentState
 
