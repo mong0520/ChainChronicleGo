@@ -91,6 +91,7 @@ var actionMapping = map[string]interface{}{
 	"UPDATE":         doUpdateDB,
 	"EXPLORER":       doExplorer,
 	"TOWER":          doTower,
+	"EXTOWER":        doExTower,
 	"WASTE":          doWasteMoney,
 	"SHOWUZU":        doShowUZU,
 	"UZU":            doUzu,
@@ -777,22 +778,92 @@ func getPresents(metadata *clients.Metadata, excludeTypes []string) {
 	}
 }
 
+func doExTower(metadata *clients.Metadata, section string) {
+	twid, _ := metadata.Config.Int(section, "TowerId")
+	// floor, _ := metadata.Config.Int(section, "Floor")
+	// snum, _ := metadata.Config.Int(section, "Snum")
+	// pt := snum //用和關卡一樣的比較不易混淆
+
+	maxFloor, err := metadata.Config.Int(section, "MaxFloor")
+	if err != nil {
+		maxFloor = 10
+	}
+	maxQuest := 3
+	// breakFloor, _ := metadata.Config.Int(section, "Floor")
+	// breakQuest, _ := metadata.Config.Int(section, "Quest")
+	// tower.AddTicket(metadata, twid, 0, 1)
+	// seems start from 2
+	for floorIndex := 2; floorIndex <= maxFloor; floorIndex++ {
+		for questIndex := 1; questIndex <= maxQuest; questIndex++ {
+			// if floorIndex == breakFloor && questIndex > breakQuest {
+			// 	return
+			// }
+			logger.Infof("開始年代記之塔-黃昏之間 %d-%d\n", floorIndex, questIndex)
+			// set team 8, 9, 10 to fit requirement on your own
+			pt := questIndex + 7
+			// tower.AddTicket(metadata, twid, 0, 1)
+			resp, res := tower.EnterExTower(metadata, twid, floorIndex-1, questIndex-1, pt-1)
+			switch res {
+			case 0:
+			case 504:
+				logger.Info("成員不符規定")
+				return
+			case 3305:
+				logger.Info("無法進行的關卡")
+				logger.Info(resp)
+				continue
+			case 3313:
+				logger.Info("重覆卡牌")
+				logger.Info(resp)
+				return
+			case 3317:
+				logger.Info("未知的關樓層，trying next..")
+				continue
+			case 3303:
+				logger.Infof("已完成年代的記之塔-黃昏之間: %d-%d", floorIndex, questIndex)
+				return
+			default:
+				logger.Info(resp)
+				return
+			}
+
+			resp, res = tower.ExitExTower(metadata, twid, 4)
+			switch res {
+			case 0:
+				logger.Infof("完成年代記之塔-黃昏之間 %d-%d\n", floorIndex, questIndex)
+			default:
+				logger.Debug(res)
+				logger.Info(resp)
+				return
+			}
+		}
+	}
+}
+
 func doTower(metadata *clients.Metadata, section string) {
 	twid, _ := metadata.Config.Int(section, "TowerId")
 	// floor, _ := metadata.Config.Int(section, "Floor")
 	// snum, _ := metadata.Config.Int(section, "Snum")
 	// pt := snum //用和關卡一樣的比較不易混淆
 
-	maxFloor := 5
+	autoRecover, err := metadata.Config.Bool(section, "AutoRecover")
+	if err != nil {
+		autoRecover = false
+	}
+
+	maxFloor, err := metadata.Config.Int(section, "MaxFloor")
+	if err != nil {
+		maxFloor = 10
+	}
 	maxQuest := 3
-	breakFloor, _ := metadata.Config.Int(section, "Floor")
-	breakQuest, _ := metadata.Config.Int(section, "Quest")
-	tower.AddTicket(metadata, twid, 0, 1)
+	// breakFloor, _ := metadata.Config.Int(section, "Floor")
+	// breakQuest, _ := metadata.Config.Int(section, "Quest")
+	// tower.AddTicket(metadata, twid, 0, 1)
 	for floorIndex := 1; floorIndex <= maxFloor; floorIndex++ {
 		for questIndex := 1; questIndex <= maxQuest; questIndex++ {
-			if floorIndex == breakFloor && questIndex > breakQuest {
-				return
-			}
+			// if floorIndex == breakFloor && questIndex > breakQuest {
+			// 	return
+			// }
 			logger.Infof("開始年代記之塔 %d-%d\n", floorIndex, questIndex)
 			pt := questIndex
 			// tower.AddTicket(metadata, twid, 0, 1)
@@ -804,30 +875,35 @@ func doTower(metadata *clients.Metadata, section string) {
 				// no key
 				// logger.Info(resp)
 				logger.Info("年代記挑戰權不足")
-				// tower.AddTicket(metadata, twid, 0, 1)
-				// if resp, err := tower.AddTicket(metadata, twid, 0, 1); err != 0 {
-				// 	logger.Info("回復失敗, 離開")
-				// 	logger.Info(resp)
-				// 	return
-				// } else {
-				// 	logger.Info("回復成功")
-				// 	// doTower(metadata, section)
-				// }
-				return
+				if autoRecover {
+					if resp, err := tower.AddTicket(metadata, twid, 1, 40); err != 0 {
+						logger.Info("回復失敗, 離開")
+						logger.Info(resp)
+						return
+					}
+					logger.Info("回復成功")
+					doTower(metadata, section)
+				} else {
+					return
+				}
+
 			case 3305:
 				logger.Info("無法進行的關卡")
-				// logger.Info(resp)
+				logger.Info(resp)
 				continue
-			case 3331:
+			case 3313:
 				logger.Info("重覆卡牌")
 				logger.Info(resp)
+				return
+			case 3303:
+				logger.Infof("已完成年代的記之塔: %d-%d", floorIndex, questIndex)
 				return
 			default:
 				logger.Info(resp)
 				return
 			}
 
-			resp, res = tower.ExitTower(metadata, twid, 8)
+			resp, res = tower.ExitTower(metadata, twid, 4)
 			switch res {
 			case 0:
 				logger.Infof("完成年代記之塔 %d-%d\n", floorIndex, questIndex)
@@ -1399,6 +1475,19 @@ func dispatchAction(event *linebot.Event, action string) {
 	} else if currentState == ccfsm.READY && action == "gacha" {
 		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.GACHA_SELECT_POOL)
 		lineReplyMessage = "請輸入轉蛋池代號"
+	} else if currentState == ccfsm.READY && action == "tower" {
+		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.TOWER_SELECT_ID)
+		lineReplyMessage = "請輸入年代塔之記ID"
+	} else if currentState == ccfsm.TOWER_SELECT_ID {
+		metadata.Config.RemoveOption("TOWER", "TowerId")
+		metadata.Config.AddOption("TOWER", "TowerId", action)
+		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.TOWER_SELECT_MAX)
+		lineReplyMessage = "請輸入年代塔之記最高樓層"
+	} else if currentState == ccfsm.TOWER_SELECT_MAX {
+		metadata.Config.RemoveOption("TOWER", "MaxFloor")
+		metadata.Config.AddOption("TOWER", "MaxFloor", action)
+		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.READY)
+		doTower(metadata, "TOWER")
 	} else if currentState == ccfsm.READY && action == "status" {
 		doStatus(metadata, "")
 	} else if currentState == ccfsm.GACHA_SELECT_POOL {

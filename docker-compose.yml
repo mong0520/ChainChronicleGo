@@ -4,10 +4,10 @@ services:
   redis:
     image: redis
     ports:
-      - 27017:27017
+      - 6379:6379
   mongo:
     image: mongo
     ports:
-      - 6379:6379
+      - 27017:27017
     volumes:
       - ./volume:/data/db
