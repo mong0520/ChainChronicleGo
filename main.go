@@ -1398,7 +1398,7 @@ func InitLineBot(m *clients.Metadata) {
 	// port := os.Getenv("PORT")
 	port := "8080"
 	addr := fmt.Sprintf(":%s", port)
-	runMode := ModeHttp
+	runMode := ModeHttps
 	log.Printf("Run Mode = %s\n", runMode)
 	if strings.ToLower(runMode) == ModeHttps {
 		log.Printf("Secure listen on %s with \n", addr)
