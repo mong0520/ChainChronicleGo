@@ -300,14 +300,26 @@ type GachaResult interface {
 
 type AllData struct {
 	Body []struct {
-		Data []map[string]interface{} `json:"data"`
-		Proc int                      `json:"proc"`
-		Type int                      `json:"type"`
+		Data interface{} `json:"data"`
+		Proc int         `json:"proc"`
+		Type int         `json:"type"`
 	} `json:"body"`
 	FinishedQuest []struct {
-		QuestID   int `json:"quest_id"`
-		Timestamp int `json:"timestamp"`
-		Type      int `json:"type"`
+		QuestID         int         `json:"quest_id"`
+		Timestamp       int         `json:"timestamp"`
+		Type            int         `json:"type"`
+		Chapter         int         `json:"chapter,omitempty"`
+		ContinueCount   int         `json:"continue_count,omitempty"`
+		EpisodeID       interface{} `json:"episode_id,omitempty"`
+		EpisodeIdx      interface{} `json:"episode_idx,omitempty"`
+		EpisodeQuestIdx interface{} `json:"episode_quest_idx,omitempty"`
+		EventCnt        int         `json:"event_cnt,omitempty"`
+		Finished        bool        `json:"finished,omitempty"`
+		TimeRecord      int         `json:"time_record,omitempty"`
+		UID             int         `json:"uid,omitempty"`
+		V3              bool        `json:"v3,omitempty"`
+		Wave            int         `json:"wave,omitempty"`
+		WinCnt          int         `json:"win_cnt,omitempty"`
 	} `json:"finished_quest"`
 	MVer struct {
 		Battleinfo                int `json:"battleinfo"`
@@ -315,20 +327,25 @@ type AllData struct {
 		Bossinfo                  int `json:"bossinfo"`
 		Casinoinfo                int `json:"casinoinfo"`
 		Charainfo                 int `json:"charainfo"`
+		Chropowerinfo             int `json:"chropowerinfo"`
 		Coverinfo                 int `json:"coverinfo"`
 		Denju                     int `json:"denju"`
 		Enemyinfo                 int `json:"enemyinfo"`
 		Episodeinfo               int `json:"episodeinfo"`
+		EventPortal               int `json:"eventPortal"`
 		Eventareainfo             int `json:"eventareainfo"`
 		Eventbadge                int `json:"eventbadge"`
 		Eventplace                int `json:"eventplace"`
 		Explorerinfo              int `json:"explorerinfo"`
 		Explorerlocation          int `json:"explorerlocation"`
 		Gachainfo                 int `json:"gachainfo"`
+		Heroicskilllist           int `json:"heroicskilllist"`
 		Homelist                  int `json:"homelist"`
 		Itemlist                  int `json:"itemlist"`
+		Medalinfo                 int `json:"medalinfo"`
 		Missionlist               int `json:"missionlist"`
 		Motionlist                int `json:"motionlist"`
+		Openseainfo               int `json:"openseainfo"`
 		Questdigest               int `json:"questdigest"`
 		Questroute                int `json:"questroute"`
 		Questtree                 int `json:"questtree"`
@@ -336,10 +353,14 @@ type AllData struct {
 		Repeatmissionlist         int `json:"repeatmissionlist"`
 		Servertime                int `json:"servertime"`
 		Skilllist                 int `json:"skilllist"`
+		Sortieinfo                int `json:"sortieinfo"`
+		SoundExData               int `json:"soundExData"`
 		Spdrama                   int `json:"spdrama"`
+		Speedruninfo              int `json:"speedruninfo"`
 		Subjugationexpeditioninfo int `json:"subjugationexpeditioninfo"`
 		Supporterskill            int `json:"supporterskill"`
 		Teacherdisciple           int `json:"teacherdisciple"`
+		Towerinfo                 int `json:"towerinfo"`
 		Uzuinfo                   int `json:"uzuinfo"`
 		Various                   int `json:"various"`
 		Vignette                  int `json:"vignette"`

@@ -1,12 +1,46 @@
 package tower
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/mong0520/ChainChronicleGo/clients"
 	"github.com/mong0520/ChainChronicleGo/clients/general"
 	"github.com/mong0520/ChainChronicleGo/utils"
 )
+
+// Type = 39 in alldata
+type TowerInfo struct {
+	Data struct {
+		ArrivalExQuest  int           `json:"arrival_ex_quest"`
+		ArrivalQuest    int           `json:"arrival_quest"`
+		Cleared         int           `json:"cleared"`
+		CloseTime       int           `json:"close_time"`
+		ExCleared       int           `json:"ex_cleared"`
+		ExFloor         int           `json:"ex_floor"`
+		ExQuest         int           `json:"ex_quest"`
+		ExStatus        int           `json:"ex_status"`
+		ExUseCids       []interface{} `json:"ex_use_cids"`
+		Floor           int           `json:"floor"`
+		MaxExFloor      int           `json:"max_ex_floor"`
+		MaxFloor        int           `json:"max_floor"`
+		Point           int           `json:"point"`
+		Quest           int           `json:"quest"`
+		RecordExFloor   int           `json:"record_ex_floor"`
+		RecordExQuest   int           `json:"record_ex_quest"`
+		RecordExWave    int           `json:"record_ex_wave"`
+		RecordFloor     int           `json:"record_floor"`
+		RecordMaxExWave int           `json:"record_max_ex_wave"`
+		RecordMaxWave   int           `json:"record_max_wave"`
+		RecordQuest     int           `json:"record_quest"`
+		RecordWave      int           `json:"record_wave"`
+		Status          int           `json:"status"`
+		TowerID         int           `json:"tower_id"`
+		UID             int           `json:"uid"`
+		UseCids         []interface{} `json:"use_cids"`
+	} `json:"data"`
+}
 
 func EnterExTower(metadata *clients.Metadata, twid int, floor int, snum int, pt int) (resp map[string]interface{}, res int) {
 	api := "ex_tower/entry"
@@ -78,4 +112,19 @@ func AddTicket(metadata *clients.Metadata, twid int, item_type int, item_id int)
 		"item_id": item_id,
 	}
 	return general.GeneralAction(api, metadata.Sid, param)
+}
+
+func GetCurrentTowerInfo(metadata *clients.Metadata) (TowerInfo, error) {
+	towerInfo := TowerInfo{}
+	for _, data := range metadata.AllDataS.Body {
+		if data.Type == 39 {
+			towerInfoData, err := json.Marshal(data)
+			if err != nil {
+				return towerInfo, err
+			}
+			json.Unmarshal(towerInfoData, &towerInfo)
+			return towerInfo, nil
+		}
+	}
+	return towerInfo, errors.New("data type 39(tower info) not found")
 }

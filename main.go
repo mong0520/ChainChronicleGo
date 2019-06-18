@@ -170,15 +170,13 @@ func start() {
 	alldata, _ := user.GetAllData(sid)
 	metadata.AllData = alldata
 	metadata.Sid = sid
-	//metadata.AllDataS = &models.AllData{}
-	//
-	//err = utils.Map2Struct(alldata, metadata.AllDataS)
-	//if err!= nil {
-	//	log.Println(err)
-	//	os.Exit(-1)
-	//}else{
-	//	log.Println(metadata.AllDataS)
-	//}
+	metadata.AllDataS = &models.AllData{}
+
+	err = json.Unmarshal([]byte(utils.Map2JsonString(metadata.AllData)), metadata.AllDataS)
+	if err != nil {
+		log.Println(err)
+		os.Exit(-1)
+	}
 	//dumpUser(metadata)
 	if options.Mode == "d" {
 		fmt.Println("Start daemon mode...")
@@ -1048,7 +1046,10 @@ func doStatus(metadata *clients.Metadata, section string) {
 			}
 		}
 	}
-
+	towerInfo, _ := tower.GetCurrentTowerInfo(metadata)
+	msg = fmt.Sprintf("年代塔之記 ID = %d", towerInfo.Data.TowerID)
+	result.WriteString(msg)
+	logger.Info(msg)
 	lineReplyMessage = result.String()
 }
 
