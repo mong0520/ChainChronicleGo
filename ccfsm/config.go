@@ -6,11 +6,11 @@ const (
 	GACHA_SELECT_POOL  = "gacha_select_pool"
 	GACHA_SELECT_COUNT = "gacha_select_count"
 	GACHA_ACTION       = "gacha_action"
-	TOWER_SELECT_ID    = "tower_select_id"
 	TOWER_SELECT_MAX   = "tower_select_max"
 	QUEST_QUERY        = "quest_query_name"
-
-	STATUS_READY = "status_ready"
+	UZU_SELECT_ID      = "uzu_select_id"
+	QUEST_SELECT_NAME  = "quest_select_name"
+	QUEST_SELECT_COUNT = "quest_select_count"
 )
 
 // type State struct {
