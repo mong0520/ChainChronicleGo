@@ -92,6 +92,7 @@ var actionMapping = map[string]interface{}{
 	"WASTE":          doWasteMoney,
 	"SHOWUZU":        doShowUZU,
 	"UZU":            doUzu,
+	"SORTIE":         doSortie,
 }
 
 func doAction(sectionName string) {
@@ -788,6 +789,26 @@ func doUzu(metadata *clients.Metadata, section string) {
 	}
 }
 
+func doSortie(metadata *clients.Metadata, section string) {
+	api := "sortie/entry"
+	param := map[string]interface{}{}
+
+	paramsRaw, _ := metadata.Config.SectionOptions(section)
+	for _, p := range paramsRaw {
+		param[p], _ = metadata.Config.String(section, p)
+	}
+
+	resp, ret := general.GeneralAction(api, metadata.Sid, param)
+	switch ret {
+	case 3405:
+		logger.Debug(resp["msg"])
+	case 0:
+		logger.Debug("完成")
+	default:
+		logger.Info(utils.Map2JsonString(resp))
+	}
+}
+
 func doDebug(metadata *clients.Metadata, section string) {
 	api, _ := metadata.Config.String(section, "API")
 	param := map[string]interface{}{}
@@ -826,10 +847,13 @@ func getPresents(metadata *clients.Metadata, excludeTypes []string) {
 }
 
 func doExTower(metadata *clients.Metadata, section string) {
-	twid, _ := metadata.Config.Int(section, "TowerId")
-	// floor, _ := metadata.Config.Int(section, "Floor")
-	// snum, _ := metadata.Config.Int(section, "Snum")
-	// pt := snum //用和關卡一樣的比較不易混淆
+	towerInfo, err := tower.GetCurrentTowerInfo(metadata)
+	if err != nil {
+		logger.Error("Unable to get Tower Info")
+		logger.Error(err)
+	}
+	twid := towerInfo.Data.TowerID
+	logger.Debugf("Tower ID = %d", twid)
 
 	maxFloor, err := metadata.Config.Int(section, "MaxFloor")
 	if err != nil {
@@ -888,10 +912,13 @@ func doExTower(metadata *clients.Metadata, section string) {
 }
 
 func doTower(metadata *clients.Metadata, section string) {
-	twid, _ := metadata.Config.Int(section, "TowerId")
-	// floor, _ := metadata.Config.Int(section, "Floor")
-	// snum, _ := metadata.Config.Int(section, "Snum")
-	// pt := snum //用和關卡一樣的比較不易混淆
+	towerInfo, err := tower.GetCurrentTowerInfo(metadata)
+	if err != nil {
+		logger.Error("Unable to get Tower Info")
+		logger.Error(err)
+	}
+	twid := towerInfo.Data.TowerID
+	logger.Debugf("Tower ID = %d", twid)
 
 	autoRecover, err := metadata.Config.Bool(section, "AutoRecover")
 	if err != nil {
@@ -1601,13 +1628,9 @@ func dispatchAction(event *linebot.Event, action string) {
 		lineReplyMessage = "請輸入年代塔之記最高樓層"
 	} else if currentState == ccfsm.TOWER_SELECT_MAX {
 		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.READY)
-		towerInfo, err := tower.GetCurrentTowerInfo(metadata)
 		if err != nil {
 			lineReplyMessage = "無法取得年代塔之記 ID"
 		} else {
-			metadata.Config.RemoveOption("TOWER", "towerId")
-			metadata.Config.AddOption("TOWER", "towerId", strconv.Itoa(towerInfo.Data.TowerID))
-
 			metadata.Config.RemoveOption("TOWER", "MaxFloor")
 			metadata.Config.AddOption("TOWER", "MaxFloor", action)
 			doTower(metadata, "TOWER")
