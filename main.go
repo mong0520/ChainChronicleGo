@@ -1233,6 +1233,7 @@ func doQuest(metadata *clients.Metadata, section string) {
 
 func raidQuest(metadata *clients.Metadata, recovery bool, section string) {
 	//ret, _ := raid.RaidList(metadata.Sid)
+	autoRaidSell, _ := metadata.Config.Bool(section, "AutoRaidSell")
 	if bossInfo := raid.GetRaidBossInfo(metadata.Sid); bossInfo != nil {
 		//logger.Infof("%+v", bossInfo)
 		logger.Infof("魔神來襲! BossId = %d, bossLv = %d\n", bossInfo.BossID, bossInfo.BossParam.Lv)
@@ -1246,6 +1247,35 @@ func raidQuest(metadata *clients.Metadata, recovery bool, section string) {
 				logger.Info(utils.Map2JsonString(ret))
 			} else {
 				bossInfo.GetBonus(metadata, param)
+				if autoRaidSell {
+					raidResp := models.EndRaidResponse{}
+					json.Unmarshal([]byte(utils.Map2JsonString(ret)), &raidResp)
+					for _, data := range raidResp.Body {
+						dType, err := dyno.Get(data, "type")
+						if err != nil {
+							continue
+						}
+						v, ok := dType.(float64)
+						if !ok {
+							logger.Error("Casting type failed")
+							break
+						}
+						// card data
+						if v == 1 {
+							cardData := models.EndRaidCardResponse{}
+							json.Unmarshal([]byte(utils.Struct2JsonString(data)), &cardData)
+							for _, card := range cardData.Data {
+								myCard := models.Charainfo{}
+								query := bson.M{"cid": card.ID}
+								controllers.GeneralQuery(metadata.DB, "charainfo", query, &myCard)
+								msg := fmt.Sprintf("得到 %d星卡: %s-%s", myCard.Rarity, myCard.Title, myCard.Name)
+								logger.Debug(msg)
+								doSellItem(metadata, card.Idx, section)
+							}
+						}
+					}
+				}
+
 			}
 		case 104:
 			logger.Info("魔神體力不足")

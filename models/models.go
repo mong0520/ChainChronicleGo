@@ -453,6 +453,114 @@ type QuestResponse struct {
 	Res int `json:"res"`
 }
 
+type EndRaidResponse struct {
+	Body []interface{} `json:"body"`
+	MVer struct {
+		Battleinfo                int `json:"battleinfo"`
+		Booklist                  int `json:"booklist"`
+		Bossinfo                  int `json:"bossinfo"`
+		Casinoinfo                int `json:"casinoinfo"`
+		Charainfo                 int `json:"charainfo"`
+		Chropowerinfo             int `json:"chropowerinfo"`
+		Coverinfo                 int `json:"coverinfo"`
+		Denju                     int `json:"denju"`
+		Enemyinfo                 int `json:"enemyinfo"`
+		Episodeinfo               int `json:"episodeinfo"`
+		EventPortal               int `json:"eventPortal"`
+		Eventareainfo             int `json:"eventareainfo"`
+		Eventbadge                int `json:"eventbadge"`
+		Eventplace                int `json:"eventplace"`
+		Explorerinfo              int `json:"explorerinfo"`
+		Explorerlocation          int `json:"explorerlocation"`
+		Gachainfo                 int `json:"gachainfo"`
+		Heroicskilllist           int `json:"heroicskilllist"`
+		Homelist                  int `json:"homelist"`
+		Itemlist                  int `json:"itemlist"`
+		Medalinfo                 int `json:"medalinfo"`
+		Missionlist               int `json:"missionlist"`
+		Motionlist                int `json:"motionlist"`
+		Openseainfo               int `json:"openseainfo"`
+		Questdigest               int `json:"questdigest"`
+		Questroute                int `json:"questroute"`
+		Questtree                 int `json:"questtree"`
+		Reload                    int `json:"reload"`
+		Repeatmissionlist         int `json:"repeatmissionlist"`
+		Servertime                int `json:"servertime"`
+		Skilllist                 int `json:"skilllist"`
+		Sortieinfo                int `json:"sortieinfo"`
+		SoundExData               int `json:"soundExData"`
+		Spdrama                   int `json:"spdrama"`
+		Speedruninfo              int `json:"speedruninfo"`
+		Subjugationexpeditioninfo int `json:"subjugationexpeditioninfo"`
+		Supporterskill            int `json:"supporterskill"`
+		Teacherdisciple           int `json:"teacherdisciple"`
+		Towerinfo                 int `json:"towerinfo"`
+		Uzuinfo                   int `json:"uzuinfo"`
+		Various                   int `json:"various"`
+		Vignette                  int `json:"vignette"`
+		Weaponcompose             int `json:"weaponcompose"`
+		Weaponcomposeevent        int `json:"weaponcomposeevent"`
+		Weaponlist                int `json:"weaponlist"`
+		Worldinfo                 int `json:"worldinfo"`
+	} `json:"mVer"`
+	Res   int `json:"res"`
+	Earns struct {
+		Bonus struct {
+			D bool `json:"d"`
+			S bool `json:"s"`
+			T bool `json:"t"`
+		} `json:"bonus"`
+		BonusGold       int  `json:"bonus_gold"`
+		CharaExp        int  `json:"chara_exp"`
+		Exp             int  `json:"exp"`
+		Gold            int  `json:"gold"`
+		IsComebackExpUp bool `json:"is_comeback_exp_up"`
+		IsNewcomerExpUp bool `json:"is_newcomer_exp_up"`
+		Point           int  `json:"point"`
+		Treasure        []struct {
+			EnemyIdx    int    `json:"enemyIdx"`
+			ID          int    `json:"id"`
+			Treasure    int    `json:"treasure"`
+			TreasureIdx int    `json:"treasureIdx"`
+			Type        string `json:"type"`
+			Val         int    `json:"val"`
+		} `json:"treasure"`
+	} `json:"earns"`
+}
+
+type EndRaidCardResponse struct {
+	Data []struct {
+		Atk            int   `json:"atk"`
+		CurrentWeapon  int   `json:"currentWeapon"`
+		DispExp        int   `json:"disp_exp"`
+		Exp            int   `json:"exp"`
+		Flag           int   `json:"flag"`
+		Hp             int   `json:"hp"`
+		ID             int   `json:"id"`
+		Idx            int   `json:"idx"`
+		IsNew          bool  `json:"is_new"`
+		LimitBreak     int   `json:"limit_break"`
+		Lv             int   `json:"lv"`
+		Maxlv          int   `json:"maxlv"`
+		NextExp        int   `json:"next_exp"`
+		SellPrice      int   `json:"sellPrice"`
+		Skillid        []int `json:"skillid"`
+		Type           int   `json:"type"`
+		WeaponAttack   int   `json:"weaponAttack"`
+		WeaponCritical int   `json:"weaponCritical"`
+		WeaponGuard    int   `json:"weaponGuard"`
+		WeaponReserve  []struct {
+			WeaponAttack   int `json:"weaponAttack"`
+			WeaponCritical int `json:"weaponCritical"`
+			WeaponGuard    int `json:"weaponGuard"`
+			Weaponid       int `json:"weaponid"`
+		} `json:"weaponReserve"`
+		Weaponid int `json:"weaponid"`
+	} `json:"data"`
+	Proc int `json:"proc"`
+	Type int `json:"type"`
+}
+
 func (g GachaResultChara) dummy() int {
 	return 0
 }
