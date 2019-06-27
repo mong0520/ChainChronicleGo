@@ -5,8 +5,8 @@ import (
 )
 
 func TestSimpePost(t *testing.T) {
-	urlEntry := "http://v382.cc.mobimon.com.tw/uzu/entry"
-	url := "http://v382.cc.mobimon.com.tw/uzu/result"
+	urlEntry := "http://v3810.cc.mobimon.com.tw/uzu/entry"
+	url := "http://v3810.cc.mobimon.com.tw/uzu/result"
 	type args struct {
 		url    string
 		fields map[string]string
