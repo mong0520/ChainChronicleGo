@@ -54,7 +54,7 @@ const (
 )
 
 type Options struct {
-	ConfigPath string `short:"c" long:"config" description:"Config path" required:"true"`
+	ConfigPath string `short:"c" long:"config" description:"Config path" required:"true" default: conf/mong_iPhone.conf`
 	Action     string `short:"a" long:"action" description:"Action to run" required:"false"`
 	Repeat     int    `short:"r" long:"repeat" description:"Repeat action for r times" required:"false"`
 	Timeout    int    `short:"t" long:"timeout" description:"Timeout in seconds between repeat" required:"false"`
