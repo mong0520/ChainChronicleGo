@@ -3,6 +3,7 @@ module github.com/mong0520/ChainChronicleGo
 go 1.12
 
 require (
+	github.com/PuerkitoBio/goquery v1.5.0
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.7.1
 	github.com/goinggo/mapstructure v0.0.0-20140717182941-194205d9b4a9

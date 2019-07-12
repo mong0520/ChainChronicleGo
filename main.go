@@ -15,6 +15,7 @@ import (
 	"github.com/mong0520/ChainChronicleGo/clients/tower"
 	"github.com/mong0520/ChainChronicleGo/clients/user"
 	"github.com/mong0520/ChainChronicleGo/clients/uzu"
+	"github.com/mong0520/ChainChronicleGo/clients/web"
 	"github.com/mong0520/ChainChronicleGo/models"
 	"github.com/mong0520/ChainChronicleGo/utils"
 
@@ -929,6 +930,7 @@ func doTower(metadata *clients.Metadata, section string) {
 	if err != nil {
 		maxFloor = 10
 	}
+	logger.Debug(maxFloor)
 	maxQuest := 3
 	// breakFloor, _ := metadata.Config.Int(section, "Floor")
 	// breakQuest, _ := metadata.Config.Int(section, "Quest")
@@ -1129,6 +1131,20 @@ func doStatus(metadata *clients.Metadata, section string) {
 	msg = fmt.Sprintf("年代塔之記 ID = %d", towerInfo.Data.TowerID)
 	result.WriteString(msg)
 	logger.Info(msg)
+
+	gachaType := []string{"event", "story"}
+	for _, t := range gachaType {
+		gachasInfo, _ := web.GetGachaInfo(t, metadata.Sid)
+		msg = fmt.Sprintf("轉蛋類型 = %s", t)
+		result.WriteString(msg)
+		logger.Info(msg)
+		for _, gachaInfo := range gachasInfo {
+			msg = fmt.Sprintf("-> 轉蛋資訊: %+v", gachaInfo)
+			result.WriteString(msg)
+			logger.Info(msg)
+		}
+	}
+
 	lineReplyMessage = result.String()
 }
 
