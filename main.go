@@ -1286,7 +1286,9 @@ func raidQuest(metadata *clients.Metadata, recovery bool, section string) {
 								controllers.GeneralQuery(metadata.DB, "charainfo", query, &myCard)
 								msg := fmt.Sprintf("得到 %d星卡: %s-%s", myCard.Rarity, myCard.Title, myCard.Name)
 								logger.Debug(msg)
-								doSellItem(metadata, card.Idx, section)
+                                if myCard.Rarity <=4{
+    								doSellItem(metadata, card.Idx, section)
+                                }
 							}
 						}
 					}
