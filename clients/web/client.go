@@ -19,10 +19,10 @@ type GachaInfo struct {
 	ItemName   string
 }
 
-func GetGachaInfo(t string, sid string) ([]GachaInfo, error) {
+func GetGachaInfo(t string, sid string, page int) ([]GachaInfo, error) {
 
 	gachasInfo := []GachaInfo{}
-	url := fmt.Sprintf("http://v3810.cc.mobimon.com.tw/web/gacha?type=%s&gacha_id=1", t)
+	url := fmt.Sprintf("http://v3810.cc.mobimon.com.tw/web/gacha?type=%s&gacha_id=%d", t, page)
 	cookieString := fmt.Sprintf("Cookie: devicewidth=568; framewidth=568; sid=%s", sid)
 
 	req, _ := http.NewRequest("GET", url, nil)
@@ -75,8 +75,10 @@ func GetGachaInfo(t string, sid string) ([]GachaInfo, error) {
 				gachaInfo.ItemName = "精靈石"
 			} else if strings.Index(gachaRawData, "轉蛋幣") != -1 {
 				gachaInfo.ItemName = "轉蛋幣"
+			} else if strings.Index(gachaRawData, "is_free") != -1 {
+				gachaInfo.ItemName = "免費轉蛋"
 			} else {
-				gachaInfo.ItemName = "Undefined"
+				gachaInfo.ItemName = "Undefined:" + gachaRawData
 			}
 
 			gachasInfo = append(gachasInfo, gachaInfo)

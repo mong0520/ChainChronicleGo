@@ -1132,16 +1132,18 @@ func doStatus(metadata *clients.Metadata, section string) {
 	result.WriteString(msg)
 	logger.Info(msg)
 
-	gachaType := []string{"event", "story"}
+	gachaType := []string{"event", "story", "legend"}
 	for _, t := range gachaType {
-		gachasInfo, _ := web.GetGachaInfo(t, metadata.Sid)
-		msg = fmt.Sprintf("轉蛋類型 = %s", t)
-		result.WriteString(msg)
-		logger.Info(msg)
-		for _, gachaInfo := range gachasInfo {
-			msg = fmt.Sprintf("-> 轉蛋資訊: %+v", gachaInfo)
+		for page := 1; page <= 3; page++ {
+			gachasInfo, _ := web.GetGachaInfo(t, metadata.Sid, page)
+			msg = fmt.Sprintf("轉蛋類型 = %s, Page = %d", t, page)
 			result.WriteString(msg)
 			logger.Info(msg)
+			for _, gachaInfo := range gachasInfo {
+				msg = fmt.Sprintf("-> 轉蛋資訊: %+v", gachaInfo)
+				result.WriteString(msg)
+				logger.Info(msg)
+			}
 		}
 	}
 
