@@ -355,7 +355,7 @@ func NewQuest() (q *quest) {
 		Htype:   0,
 		Lv:      0,
 		Version: 2,
-		Fid:     229741,
+		Fid:     777064,
 		Time:    "10.0",
 		Res:     1,
 		Bt:      10,

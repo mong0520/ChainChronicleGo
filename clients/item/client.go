@@ -21,7 +21,7 @@ var CHAR_LB = "char_lb"
 var SOUL_FRUIT = "soul_fruit"
 
 var iteaMapping = map[string]interface{}{
-	AP_FRUIT:     map[string]interface{}{"kind": "item", "id": 1, "type": "item", "price": 10, "val": 1},
+    AP_FRUIT:     map[string]interface{}{"kind": "item", "id": 1, "type": "item", "price": 10, "val": 1,"limit_id": 12},
 	WEAPON_SWORD: map[string]interface{}{"kind": "item", "id": 96019, "type": "weapon_ev", "price": 10, "val": 1},
 	WEAPON_BOW:   map[string]interface{}{"kind": "item", "id": 96064, "type": "weapon_ev", "price": 10, "val": 1},
 	WEAPON_MAGIC: map[string]interface{}{"kind": "item", "val": 1, "id": 96126, "type": "weapon_ev", "price": 10},
