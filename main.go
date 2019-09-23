@@ -15,7 +15,6 @@ import (
 	"github.com/mong0520/ChainChronicleGo/clients/tower"
 	"github.com/mong0520/ChainChronicleGo/clients/user"
 	"github.com/mong0520/ChainChronicleGo/clients/uzu"
-	"github.com/mong0520/ChainChronicleGo/clients/web"
 	"github.com/mong0520/ChainChronicleGo/models"
 	"github.com/mong0520/ChainChronicleGo/utils"
 
@@ -24,7 +23,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"reflect"
 	"strconv"
 	"time"
 
@@ -1109,80 +1107,9 @@ func doTakeOver(metadata *clients.Metadata, section string) {
 }
 
 func doStatus(metadata *clients.Metadata, section string) {
-	var result strings.Builder
-	targets := []string{"comment", "uid", "heroName", "open_id", "lv", "cardMax", "accept_disciple", "name",
-		"friendCnt", "only_friend_disciple", "staminaMax", "zuLastRefilledScheduleId", "uzu_key"}
-	itemMapping := map[int]string{
-		7:  "轉蛋卷",
-		10: "金幣",
-		11: "聖靈幣",
-		13: "戒指",
-		15: "賭場幣",
-		20: "轉蛋幣",
-		39: "幸運球",
-	}
-	specialData := metadata.AllData["body"].([]interface{})[8].(map[string]interface{})["data"]
-	stoneCount := metadata.AllData["body"].([]interface{})[12].(map[string]interface{})["data"]
-	msg := fmt.Sprintf("精靈石 = %.0f\n", stoneCount.(float64))
-	logger.Infof(msg)
-	result.WriteString(msg)
-	for _, item := range specialData.([]interface{}) {
-		itemId := item.(map[string]interface{})["item_id"]
-		cnt := item.(map[string]interface{})["cnt"]
-		//logger.Info(itemId, reflect.TypeOf(itemId))
-		//logger.Info(cnt, reflect.TypeOf(cnt))
-		//fmt.Println(itemId)
-		if val, ok := itemMapping[int(itemId.(float64))]; ok {
-			switch reflect.TypeOf(cnt).Kind() {
-			case reflect.String:
-				msg = fmt.Sprintf("%s = %s\n", val, cnt.(string))
-				logger.Infof(msg)
-				result.WriteString(msg)
-			case reflect.Float64:
-				msg = fmt.Sprintf("%s = %.0f\n", val, cnt.(float64))
-				logger.Infof(msg)
-				result.WriteString(msg)
-			}
-		}
-	}
-
-	userData := metadata.AllData["body"].([]interface{})[4].(map[string]interface{})["data"]
-	//logger.Info(utils.Map2JsonString(metadata.AllData))
-	for k, v := range userData.(map[string]interface{}) {
-		if utils.InArray(k, targets) {
-			switch v.(type) {
-			case float64, float32:
-				msg = fmt.Sprintf("%s = %.0f\n", k, v)
-				logger.Infof(msg)
-				result.WriteString(msg)
-			default:
-				msg = fmt.Sprintf("%s = %v\n", k, v)
-				logger.Infof(msg)
-				result.WriteString(msg)
-			}
-		}
-	}
-	towerInfo, _ := tower.GetCurrentTowerInfo(metadata)
-	msg = fmt.Sprintf("年代塔之記 ID = %d", towerInfo.Data.TowerID)
-	result.WriteString(msg)
-	logger.Info(msg)
-
-	gachaType := []string{"event", "story", "legend"}
-	for _, t := range gachaType {
-		for page := 1; page <= 3; page++ {
-			gachasInfo, _ := web.GetGachaInfo(t, metadata.Sid, page)
-			msg = fmt.Sprintf("轉蛋類型 = %s, Page = %d", t, page)
-			result.WriteString(msg)
-			logger.Info(msg)
-			for _, gachaInfo := range gachasInfo {
-				msg = fmt.Sprintf("-> 轉蛋資訊: %+v", gachaInfo)
-				result.WriteString(msg)
-				logger.Info(msg)
-			}
-		}
-	}
-
-	lineReplyMessage = result.String()
+	result := session.GetSummaryStatus(metadata.Sid)
+	logger.Info(result)
+	lineReplyMessage = result
 }
 
 func doShowAllData(metadata *clients.Metadata, section string) {
