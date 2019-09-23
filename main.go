@@ -94,6 +94,7 @@ var actionMapping = map[string]interface{}{
 	"SHOWUZU":        doShowUZU,
 	"UZU":            doUzu,
 	"SORTIE":         doSortie,
+	"BOOK":           doShowBook,
 }
 
 func doAction(sectionName string) {
@@ -1019,6 +1020,25 @@ func doBuy(metadata *clients.Metadata, section string) {
 	}
 }
 
+func doShowBook(metadata *clients.Metadata, section string) {
+	book, _ := user.GetUserBook(metadata.Sid)
+	logger.Debug("曾獲得的SSR")
+	for _, char := range book.CardList {
+		cardInfo := &models.Charainfo{} // for mongodb result
+		query := bson.M{"cid": char.Cid}
+		if err := controllers.GeneralQuery(metadata.DB, "charainfo", query, &cardInfo); err != nil {
+			continue
+		} else {
+			if cardInfo.Rarity >= 5 {
+				logger.Infof("%d,%s-%s", cardInfo.Cid, cardInfo.Title, cardInfo.Name)
+			}
+		}
+	}
+
+	logger.Debug("目前手上的SSR")
+	doShowChars(metadata, section)
+}
+
 func doShowChars(metadata *clients.Metadata, section string) {
 	autoCompose, _ := metadata.Config.Bool("GENERAL", "AutoCompose")
 
@@ -1037,8 +1057,10 @@ func doShowChars(metadata *clients.Metadata, section string) {
 			logger.Info(charData.ID)
 		} else {
 			if cardInfo.Rarity >= threshold {
-				logger.Infof("%d, %s-%s, 目前等級: %d, 界限突破:%d",
-					cardInfo.Cid, cardInfo.Title, cardInfo.Name, charData.Lv, charData.LimitBreak)
+				// logger.Infof("%d,%s-%s,目前等級: %d, 界限突破:%d",
+				// 	cardInfo.Cid, cardInfo.Title, cardInfo.Name, charData.Lv, charData.LimitBreak)
+				logger.Infof("%d,%s-%s",
+					cardInfo.Cid, cardInfo.Title, cardInfo.Name)
 				if autoCompose == false {
 					continue
 				}

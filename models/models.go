@@ -585,3 +585,102 @@ func GetStruct(s string) (m interface{}) {
 		return nil
 	}
 }
+
+type Book struct {
+	Body []struct {
+		Data struct {
+			Cover  interface{} `json:"cover"`
+			Expup  interface{} `json:"expup"`
+			Global struct {
+				Purchase    int `json:"purchase"`
+				RaidItem    int `json:"raid_item"`
+				Review      int `json:"review"`
+				TmpInterval int `json:"tmp_interval"`
+			} `json:"global"`
+			PartyOpt struct {
+				CostBorder1 int `json:"cost_border1"`
+				CostBorder2 int `json:"cost_border2"`
+				Type        int `json:"type"`
+			} `json:"party_opt"`
+			Raid          interface{}   `json:"raid"`
+			Subjugation   []interface{} `json:"subjugation"`
+			Totalwar      interface{}   `json:"totalwar"`
+			Weaponcompose struct {
+				WeaponComposeDisabled bool `json:"weapon_compose_disabled"`
+			} `json:"weaponcompose"`
+		} `json:"data"`
+		Proc int `json:"proc"`
+		Type int `json:"type"`
+	} `json:"body"`
+	CardList []struct {
+		Cid       int   `json:"cid"`
+		Skillid   []int `json:"skillid"`
+		Quest     []int `json:"quest,omitempty"`
+		Expansion []struct {
+			ID    int `json:"id"`
+			LvIdx int `json:"lv_idx"`
+		} `json:"expansion,omitempty"`
+	} `json:"card_list"`
+	CoverList []struct {
+		CoverID int    `json:"cover_id"`
+		Name    string `json:"name"`
+		Point   int    `json:"point"`
+		Rank    int    `json:"rank"`
+		Text    string `json:"text"`
+	} `json:"cover_list"`
+	DramaList     []int `json:"drama_list"`
+	FinishedQuest []struct {
+		QuestID int `json:"quest_id"`
+		Type    int `json:"type"`
+	} `json:"finished_quest"`
+	MVer struct {
+		Battleinfo                int `json:"battleinfo"`
+		Booklist                  int `json:"booklist"`
+		Bossinfo                  int `json:"bossinfo"`
+		Casinoinfo                int `json:"casinoinfo"`
+		Charainfo                 int `json:"charainfo"`
+		Chropowerinfo             int `json:"chropowerinfo"`
+		Coverinfo                 int `json:"coverinfo"`
+		Denju                     int `json:"denju"`
+		Enemyinfo                 int `json:"enemyinfo"`
+		Episodeinfo               int `json:"episodeinfo"`
+		EventPortal               int `json:"eventPortal"`
+		Eventareainfo             int `json:"eventareainfo"`
+		Eventbadge                int `json:"eventbadge"`
+		Eventplace                int `json:"eventplace"`
+		Explorerinfo              int `json:"explorerinfo"`
+		Explorerlocation          int `json:"explorerlocation"`
+		Gachainfo                 int `json:"gachainfo"`
+		Heroicskilllist           int `json:"heroicskilllist"`
+		Homelist                  int `json:"homelist"`
+		Itemlist                  int `json:"itemlist"`
+		Medalinfo                 int `json:"medalinfo"`
+		Missionlist               int `json:"missionlist"`
+		Motionlist                int `json:"motionlist"`
+		Openseainfo               int `json:"openseainfo"`
+		Questdigest               int `json:"questdigest"`
+		Questroute                int `json:"questroute"`
+		Questtree                 int `json:"questtree"`
+		Reload                    int `json:"reload"`
+		Repeatmissionlist         int `json:"repeatmissionlist"`
+		Servertime                int `json:"servertime"`
+		Skilllist                 int `json:"skilllist"`
+		Sortieinfo                int `json:"sortieinfo"`
+		SoundExData               int `json:"soundExData"`
+		Spdrama                   int `json:"spdrama"`
+		Speedruninfo              int `json:"speedruninfo"`
+		Spquestinfo               int `json:"spquestinfo"`
+		Subjugationexpeditioninfo int `json:"subjugationexpeditioninfo"`
+		Supporterskill            int `json:"supporterskill"`
+		Teacherdisciple           int `json:"teacherdisciple"`
+		Towerinfo                 int `json:"towerinfo"`
+		Uzuinfo                   int `json:"uzuinfo"`
+		Various                   int `json:"various"`
+		Vignette                  int `json:"vignette"`
+		Weaponcompose             int `json:"weaponcompose"`
+		Weaponcomposeevent        int `json:"weaponcomposeevent"`
+		Weaponlist                int `json:"weaponlist"`
+		Worldinfo                 int `json:"worldinfo"`
+	} `json:"mVer"`
+	Res int `json:"res"`
+}
