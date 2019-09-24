@@ -90,16 +90,25 @@ func UpdateDB(metadata *clients.Metadata) {
 			dataList, _ := dyno.GetSlice(ret, field)
 			session.DB("cc").C(field).DropCollection()
 
-			for _, data := range dataList {
+			for idx, data := range dataList {
 				tmpEnt := models.GetStruct(field)
 				switch reflect.TypeOf(data).Kind() {
 				case reflect.Map:
 					utils.Map2Struct(data.(map[string]interface{}), tmpEnt)
 					session.DB("cc").C(field).Insert(&tmpEnt)
+
 				case reflect.Slice:
 					for _, item := range data.([]interface{}) {
-						utils.Map2Struct(item.(map[string]interface{}), tmpEnt)
-						session.DB("cc").C(field).Insert(&tmpEnt)
+						// ad-hoc logic to set quest type
+						if field == "questdigest" {
+							questInfo := tmpEnt.(*models.QuestDigest)
+							questInfo.QuestType = idx
+							session.DB("cc").C(field).Insert(&questInfo)
+						} else {
+							utils.Map2Struct(item.(map[string]interface{}), tmpEnt)
+							session.DB("cc").C(field).Insert(&tmpEnt)
+						}
+
 					}
 				}
 

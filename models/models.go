@@ -135,6 +135,7 @@ type QuestDigest struct {
 	BgList         []int         `json:"bg_list"`
 	DifficultyList []interface{} `json:"difficulty_list"`
 	ChapterCnt     int           `json:"chapter_cnt"`
+	QuestType      int           `json:"quest_type"`
 }
 
 type Skilllist struct {
