@@ -149,7 +149,7 @@ func post(requestUrl string, body map[string]interface{}, useProxy bool) (respMa
 }
 
 // GetSummaryStatus returns summary status and return as json string
-func GetSummaryStatus(sid string) string {
+func GetSummaryStatus(sid string) map[string]interface{} {
 	result := make(map[string]interface{})
 	alldata, _ := user.GetAllData(sid)
 	// var result strings.Builder
@@ -233,7 +233,5 @@ func GetSummaryStatus(sid string) string {
 
 	result["gacha"] = tempResult
 
-	output, _ := json.MarshalIndent(result, "", "  ")
-
-	return string(output)
+	return result
 }

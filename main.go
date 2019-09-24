@@ -1108,7 +1108,8 @@ func doTakeOver(metadata *clients.Metadata, section string) {
 
 func doStatus(metadata *clients.Metadata, section string) {
 	result := session.GetSummaryStatus(metadata.Sid)
-	logger.Info(result)
+	output, _ := json.MarshalIndent(result, "", "  ")
+	logger.Info(string(output))
 	// for k, v := range result {
 	// 	if
 	// 	fmt.Printf("%s = %s\n", k, v)
