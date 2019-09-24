@@ -1109,7 +1109,12 @@ func doTakeOver(metadata *clients.Metadata, section string) {
 func doStatus(metadata *clients.Metadata, section string) {
 	result := session.GetSummaryStatus(metadata.Sid)
 	logger.Info(result)
-	lineReplyMessage = result
+	// for k, v := range result {
+	// 	if
+	// 	fmt.Printf("%s = %s\n", k, v)
+	// }
+	// logger.Info(utils.Map2JsonString(result))
+	// lineReplyMessage = result
 }
 
 func doShowAllData(metadata *clients.Metadata, section string) {

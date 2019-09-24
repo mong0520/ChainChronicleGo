@@ -148,9 +148,11 @@ func post(requestUrl string, body map[string]interface{}, useProxy bool) (respMa
 	return respMap, nil
 }
 
+// GetSummaryStatus returns summary status and return as json string
 func GetSummaryStatus(sid string) string {
+	result := make(map[string]interface{})
 	alldata, _ := user.GetAllData(sid)
-	var result strings.Builder
+	// var result strings.Builder
 	targets := []string{"comment", "uid", "heroName", "open_id", "lv", "cardMax", "accept_disciple", "name",
 		"friendCnt", "only_friend_disciple", "staminaMax", "zuLastRefilledScheduleId", "uzu_key"}
 	itemMapping := map[int]string{
@@ -164,8 +166,8 @@ func GetSummaryStatus(sid string) string {
 	}
 	specialData := alldata["body"].([]interface{})[8].(map[string]interface{})["data"]
 	stoneCount := alldata["body"].([]interface{})[12].(map[string]interface{})["data"]
-	msg := fmt.Sprintf("精靈石 = %.0f\n", stoneCount.(float64))
-	result.WriteString(msg)
+	// msg := fmt.Sprintf("精靈石 = %.0f\n", stoneCount.(float64))
+	result["精靈石"] = fmt.Sprintf("%.0f", stoneCount.(float64))
 	for _, item := range specialData.([]interface{}) {
 		itemId := item.(map[string]interface{})["item_id"]
 		cnt := item.(map[string]interface{})["cnt"]
@@ -175,11 +177,12 @@ func GetSummaryStatus(sid string) string {
 		if val, ok := itemMapping[int(itemId.(float64))]; ok {
 			switch reflect.TypeOf(cnt).Kind() {
 			case reflect.String:
-				msg = fmt.Sprintf("%s = %s\n", val, cnt.(string))
-				result.WriteString(msg)
+				// msg = fmt.Sprintf("%s = %s\n", val, cnt.(string))
+				result[val] = cnt.(string)
 			case reflect.Float64:
-				msg = fmt.Sprintf("%s = %.0f\n", val, cnt.(float64))
-				result.WriteString(msg)
+				// msg = fmt.Sprintf("%s = %.0f\n", val, cnt.(float64))
+				// result.WriteString(msg)
+				result[val] = cnt.(float64)
 			}
 		}
 	}
@@ -190,11 +193,13 @@ func GetSummaryStatus(sid string) string {
 		if utils.InArray(k, targets) {
 			switch v.(type) {
 			case float64, float32:
-				msg = fmt.Sprintf("%s = %.0f\n", k, v)
-				result.WriteString(msg)
+				// msg = fmt.Sprintf("%s = %.0f\n", k, v)
+				// result.WriteString(msg)
+				result[k] = v
 			default:
-				msg = fmt.Sprintf("%s = %v\n", k, v)
-				result.WriteString(msg)
+				// msg = fmt.Sprintf("%s = %v\n", k, v)
+				// result.WriteString(msg)
+				result[k] = v
 			}
 		}
 	}
@@ -206,21 +211,29 @@ func GetSummaryStatus(sid string) string {
 	json.Unmarshal([]byte(utils.Map2JsonString(metadata.AllData)), metadata.AllDataS)
 
 	towerInfo, _ := tower.GetCurrentTowerInfo(metadata)
-	msg = fmt.Sprintf("年代塔之記 ID = %d\n", towerInfo.Data.TowerID)
-	result.WriteString(msg)
+	// msg = fmt.Sprintf("年代塔之記 ID = %d\n", towerInfo.Data.TowerID)
+	// result.WriteString(msg)
+	result["年代塔之記ID"] = towerInfo.Data.TowerID
 
 	gachaType := []string{"event", "story", "legend"}
+	tempResult := make(map[string]interface{})
 	for _, t := range gachaType {
 		for page := 1; page <= 3; page++ {
+			tempResult[t] = make(map[string]interface{})
 			gachasInfo, _ := web.GetGachaInfo(t, sid, page)
-			msg = fmt.Sprintf("轉蛋類型 = %s, Page = %d\n", t, page)
-			result.WriteString(msg)
-			for _, gachaInfo := range gachasInfo {
-				msg = fmt.Sprintf("-> 轉蛋資訊: %+v\n", gachaInfo)
-				result.WriteString(msg)
-			}
+			// msg = fmt.Sprintf("轉蛋類型 = %s, Page = %d\n", t, page)
+			// result.WriteString(msg)
+			tempResult[t] = gachasInfo
+			// for _, gachaInfo := range gachasInfo {
+			// 	msg = fmt.Sprintf("-> 轉蛋資訊: %+v\n", gachaInfo)
+			// 	result.WriteString(msg)
+			// }
 		}
 	}
 
-	return result.String()
+	result["gacha"] = tempResult
+
+	output, _ := json.MarshalIndent(result, "", "  ")
+
+	return string(output)
 }
