@@ -25,6 +25,14 @@ func GeneralQuery(session *mgo.Session, collection string, query interface{}, re
 	}
 }
 
+func GeneralQueryAll(session *mgo.Session, collection string, query interface{}, result interface{}) (err error) {
+	if err := session.DB("cc").C(collection).Find(query).All(result); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func GetQuestByName(session *mgo.Session, name string) (*models.QuestDigest, error) {
 	result := models.QuestDigest{}
 	query := bson.M{"name": name}
