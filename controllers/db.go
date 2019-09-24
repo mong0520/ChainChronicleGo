@@ -44,14 +44,20 @@ func GetQuestByName(session *mgo.Session, name string) (*models.QuestDigest, err
 	return &result, nil
 }
 
-func GetQuestsByName(session *mgo.Session, name string) ([]models.QuestDigest, error) {
+func GetQuestsByName(session *mgo.Session, name string, selector *bson.M) ([]models.QuestDigest, error) {
 	results := []models.QuestDigest{}
 	// queryString := fmt.Sprintf(`/%s/`, name)
 	// query := bson.M{"name": bson.RegEx{Pattern: queryString, Options: ""}}
 	query := bson.M{
 		"name": bson.RegEx{Pattern: name, Options: "i"},
 	}
-	err := session.DB("cc").C("questdigest").Find(query).All(&results)
+
+	var err error
+	if selector != nil {
+		err = session.DB("cc").C("questdigest").Find(query).Select(selector).All(&results)
+	} else {
+		err = session.DB("cc").C("questdigest").Find(query).All(&results)
+	}
 
 	if err != nil {
 		return nil, err
