@@ -39,7 +39,7 @@ func Login(uid string, token string, useProxy bool) (sid string, err error) {
 	postBody := GetPostBody(uid, token)
 	resp, _ := post(requestUrl, postBody, useProxy)
 
-	//fmt.Printf("Response = %v\n", utils.Map2JsonString(resp))
+	fmt.Printf("Response = %v\n", utils.Map2JsonString(resp))
 	if _, ok := resp["login"]; ok {
 		sid = resp["login"].(map[string]interface{})["sid"].(string)
 		return sid, nil

@@ -105,8 +105,9 @@ func UpdateDB(metadata *clients.Metadata) {
 
 				case reflect.Slice:
 					for _, item := range data.([]interface{}) {
-						// ad-hoc logic to set quest type
+						// // ad-hoc logic to set quest type
 						if field == "questdigest" {
+							utils.Map2Struct(item.(map[string]interface{}), tmpEnt)
 							questInfo := tmpEnt.(*models.QuestDigest)
 							questInfo.QuestType = idx
 							session.DB("cc").C(field).Insert(&questInfo)
@@ -114,6 +115,9 @@ func UpdateDB(metadata *clients.Metadata) {
 							utils.Map2Struct(item.(map[string]interface{}), tmpEnt)
 							session.DB("cc").C(field).Insert(&tmpEnt)
 						}
+
+						// utils.Map2Struct(item.(map[string]interface{}), tmpEnt)
+						// session.DB("cc").C(field).Insert(&tmpEnt)
 
 					}
 				}
