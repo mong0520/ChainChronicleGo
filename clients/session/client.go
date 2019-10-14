@@ -39,7 +39,7 @@ func Login(uid string, token string, useProxy bool) (sid string, err error) {
 	postBody := GetPostBody(uid, token)
 	resp, _ := post(requestUrl, postBody, useProxy)
 
-	fmt.Printf("Response = %v\n", utils.Map2JsonString(resp))
+	// fmt.Printf("Response = %v\n", utils.Map2JsonString(resp))
 	if _, ok := resp["login"]; ok {
 		sid = resp["login"].(map[string]interface{})["sid"].(string)
 		return sid, nil
@@ -215,15 +215,16 @@ func GetSummaryStatus(sid string) map[string]interface{} {
 	// result.WriteString(msg)
 	result["年代塔之記ID"] = towerInfo.Data.TowerID
 
+	// gachaType := []string{"event", "story", "legend", "normal", "ring", "hNormal"}
 	gachaType := []string{"event", "story", "legend"}
-	tempResult := make(map[string]interface{})
+	tempResult := make(map[string][]interface{})
 	for _, t := range gachaType {
-		for page := 1; page <= 3; page++ {
-			tempResult[t] = make(map[string]interface{})
-			gachasInfo, _ := web.GetGachaInfo(t, sid, page)
+		tempResult[t] = make([]interface{}, 3)
+		for page := 0; page < 3; page++ {
+			gachasInfo, _ := web.GetGachaInfo(t, sid, page+1)
+			tempResult[t][page] = gachasInfo
 			// msg = fmt.Sprintf("轉蛋類型 = %s, Page = %d\n", t, page)
 			// result.WriteString(msg)
-			tempResult[t] = gachasInfo
 			// for _, gachaInfo := range gachasInfo {
 			// 	msg = fmt.Sprintf("-> 轉蛋資訊: %+v\n", gachaInfo)
 			// 	result.WriteString(msg)
