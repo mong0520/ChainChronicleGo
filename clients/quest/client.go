@@ -53,6 +53,8 @@ type quest struct {
 	S               int
 	Cc              int
 	Oc              int
+	ParsedBLCids    []int
+	BLCids          string
 }
 
 type Wvt struct {
@@ -154,9 +156,9 @@ func (q *quest) EndQeustV2(u *clients.Metadata) (resp map[string]interface{}, re
 	// fmt.Println(wvt)
 
 	mission := Mission{
-		Cid:   []int{202, 201, 2202, 6201, 4201, 59017},
-		Sid:   []int{0, 0, 0, 0, 0, 0},
-		Fid:   []int{9222},
+		Cid:   []int{5060},
+		Sid:   []int{0},
+		Fid:   []int{5060},
 		Ms:    0,
 		Md:    18934,
 		Es:    0,
@@ -184,30 +186,30 @@ func (q *quest) EndQeustV2(u *clients.Metadata) (resp map[string]interface{}, re
 		BfSpd: 0,
 	}
 	mission.Sc.Num0 = 2
-	mission.Sc.Num1 = 1
-	mission.Sc.Num2 = 1
-	mission.Sc.Num3 = 1
-	mission.Sc.Num4 = 1
+	mission.Sc.Num1 = 0
+	mission.Sc.Num2 = 0
+	mission.Sc.Num3 = 0
+	mission.Sc.Num4 = 0
 
-	mission.Job.Num0 = 0
+	mission.Job.Num0 = 1
 	mission.Job.Num1 = 1
-	mission.Job.Num2 = 4
-	mission.Job.Num3 = 2
-	mission.Job.Num4 = 0
+	mission.Job.Num2 = 1
+	mission.Job.Num3 = 1
+	mission.Job.Num4 = 1
 
-	mission.Weapon.Num0 = 0
-	mission.Weapon.Num1 = 0
-	mission.Weapon.Num2 = 0
-	mission.Weapon.Num3 = 0
-	mission.Weapon.Num4 = 4
-	mission.Weapon.Num5 = 2
-	mission.Weapon.Num8 = 0
-	mission.Weapon.Num9 = 0
+	mission.Weapon.Num0 = 1
+	mission.Weapon.Num1 = 1
+	mission.Weapon.Num2 = 1
+	mission.Weapon.Num3 = 1
+	mission.Weapon.Num4 = 1
+	mission.Weapon.Num5 = 1
+	mission.Weapon.Num8 = 1
+	mission.Weapon.Num9 = 1
 	mission.Weapon.Num10 = 1
 
-	mission.Um.Num1 = 5
-	mission.Um.Num2 = 1
-	mission.Um.Num3 = 0
+	mission.Um.Num1 = 3
+	mission.Um.Num2 = 3
+	mission.Um.Num3 = 3
 
 	mission.Uh.Num3 = 1
 	mission.Uh.Num5 = 1
@@ -217,18 +219,16 @@ func (q *quest) EndQeustV2(u *clients.Metadata) (resp map[string]interface{}, re
 	mission.Uh.Num20 = 1
 	// fmt.Println(mission)
 
-	bl := []BL{
-		{SrcCid: 1017, Mana: 6, UseSkill: true},
-		{SrcCid: 5001, Mana: 6, UseSkill: true},
-		{SrcCid: 1002, Mana: 6, UseSkill: true},
-		{SrcCid: 7012, Mana: 6, UseSkill: true},
-		{SrcCid: 1254, Mana: 6, UseSkill: true},
-		{SrcCid: 9012, Mana: 6, UseSkill: true},
+	// important, use the cid of original version
+	bls := []BL{}
+	for _, cid := range q.ParsedBLCids {
+		bl := BL{SrcCid: cid, Mana: 6, UseSkill: true}
+		bls = append(bls, bl)
 	}
-	// fmt.Println(bl)
 
+	// fmt.Println(bl)
 	blf := []BL{
-		{SrcCid: 9222, Mana: 5, UseSkill: true},
+		{SrcCid: 5060, Mana: 5, UseSkill: true},
 	}
 	// fmt.Println(blf)
 
@@ -238,7 +238,7 @@ func (q *quest) EndQeustV2(u *clients.Metadata) (resp map[string]interface{}, re
 	missionValue := utils.Struct2JsonString(mission)
 	// fmt.Println(missionValue)
 
-	blValue := utils.Struct2JsonString(bl)
+	blValue := utils.Struct2JsonString(bls)
 	// fmt.Println(blValue)
 
 	blfValue := utils.Struct2JsonString(blf)
@@ -351,20 +351,22 @@ func (q *quest) getPostBody() (body map[string]interface{}) {
 
 func NewQuest() (q *quest) {
 	q = &quest{
-		Hcid:    0,
-		Htype:   0,
-		Lv:      0,
-		Version: 2,
-		Fid:     229741,
-		Time:    "10.0",
-		Res:     1,
-		Bt:      10,
-		Wc:      4,
-		Wn:      1,
-		Cc:      1,
-		D:       1,
-		S:       1,
-		Oc:      1,
+		Hcid:         0,
+		Htype:        0,
+		Lv:           0,
+		Version:      2,
+		Fid:          229741,
+		Time:         "10.0",
+		Res:          1,
+		Bt:           10,
+		Wc:           4,
+		Wn:           1,
+		Cc:           1,
+		D:            1,
+		S:            1,
+		Oc:           1,
+		BLCids:       "",
+		ParsedBLCids: []int{},
 	}
 	return q
 }

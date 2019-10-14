@@ -1156,6 +1156,19 @@ func doQuest(metadata *clients.Metadata, section string) {
 	// Read config to Struct
 	utils.ParseConfig2Struct(conf, section, questInfo)
 	qids := strings.Split(questInfo.QuestIds, ",")
+	blcids := strings.Split(questInfo.BLCids, ",")
+	if len(blcids) > 1 {
+		blcidsInt := []int{}
+		for _, i := range blcids {
+			val, err := strconv.Atoi(i)
+			if err != nil {
+				logger.Fatal(err)
+			}
+			blcidsInt = append(blcidsInt, val)
+		}
+		questInfo.ParsedBLCids = blcidsInt
+	}
+
 	startQid, _ := strconv.Atoi(qids[0])
 	endQid, _ := strconv.Atoi(qids[1])
 	for qid := startQid; qid <= endQid; qid++ {
