@@ -1189,9 +1189,22 @@ func doQuest(metadata *clients.Metadata, section string) {
 			resp, res = questInfo.EndQeustV2(metadata)
 			questRet := models.QuestResponse{}
 			utils.Map2Struct(resp, &questRet)
-			earned := questRet.Body[1].Data
+			// logger.Debug(utils.Map2JsonString(resp))
+			earned := questRet.Body[0].Data
 			for _, item := range earned {
 				if val, ok := item["idx"]; ok && isAutoSell {
+					lvVal, _ := item["lv"]
+					if val, ok := item["locked"]; ok {
+						isLocked, _ := val.(string)
+						if isLocked == "true" {
+							continue
+						}
+					}
+					lv := int(lvVal.(float64))
+					if lv > 1 {
+						// 防呆
+						continue
+					}
 					cid := int(val.(float64))
 					doSellItem(metadata, cid, "")
 				}
