@@ -395,7 +395,7 @@ func doGacha(metadata *clients.Metadata, section string) {
 	utils.ParseConfig2Struct(metadata.Config, section, gachaInfo)
 	logger.Info("開始轉蛋")
 	if resp, ret := gachaInfo.Gacha(metadata); ret == 0 {
-		gachaResult := processGachaResult(resp)
+		gachaResult := ProcessGachaResult(resp)
 		for _, card := range gachaResult["char"].([]models.GachaResultChara) {
 			myCard := models.Charainfo{}
 			query := bson.M{"cid": card.ID}
@@ -609,7 +609,7 @@ func findBestCardToExplorer(pickupItem *explorer.Pickup) (result map[string]int)
 	return result
 }
 
-func processGachaResult(resp map[string]interface{}) (gachaResult map[string]interface{}) {
+func ProcessGachaResult(resp map[string]interface{}) (gachaResult map[string]interface{}) {
 	gachaData, _ := dyno.GetSlice(resp, "body")
 	//logger.Info(utils.Map2JsonString(resp))
 	gachaResult = map[string]interface{}{
