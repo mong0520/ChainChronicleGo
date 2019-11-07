@@ -17,7 +17,6 @@ import (
 	"github.com/mong0520/ChainChronicleGo/clients"
 	"github.com/mong0520/ChainChronicleGo/clients/tower"
 	"github.com/mong0520/ChainChronicleGo/clients/user"
-	"github.com/mong0520/ChainChronicleGo/clients/web"
 	"github.com/mong0520/ChainChronicleGo/models"
 	"github.com/mong0520/ChainChronicleGo/utils"
 	"golang.org/x/net/proxy"
@@ -216,23 +215,23 @@ func GetSummaryStatus(sid string) map[string]interface{} {
 	result["年代塔之記ID"] = towerInfo.Data.TowerID
 
 	// gachaType := []string{"event", "story", "legend", "normal", "ring", "hNormal"}
-	gachaType := []string{"event", "story", "legend"}
-	tempResult := make(map[string][]interface{})
-	for _, t := range gachaType {
-		tempResult[t] = make([]interface{}, 3)
-		for page := 0; page < 3; page++ {
-			gachasInfo, _ := web.GetGachaInfo(t, sid, page+1)
-			tempResult[t][page] = gachasInfo
-			// msg = fmt.Sprintf("轉蛋類型 = %s, Page = %d\n", t, page)
-			// result.WriteString(msg)
-			// for _, gachaInfo := range gachasInfo {
-			// 	msg = fmt.Sprintf("-> 轉蛋資訊: %+v\n", gachaInfo)
-			// 	result.WriteString(msg)
-			// }
-		}
-	}
+	// gachaType := []string{"event", "story", "legend"}
+	// tempResult := make(map[string][]interface{})
+	// for _, t := range gachaType {
+	// 	tempResult[t] = make([]interface{}, 3)
+	// 	for page := 0; page < 3; page++ {
+	// 		gachasInfo, _ := web.GetGachaInfo(t, sid, page+1)
+	// 		tempResult[t][page] = gachasInfo
+	// 		// msg = fmt.Sprintf("轉蛋類型 = %s, Page = %d\n", t, page)
+	// 		// result.WriteString(msg)
+	// 		// for _, gachaInfo := range gachasInfo {
+	// 		// 	msg = fmt.Sprintf("-> 轉蛋資訊: %+v\n", gachaInfo)
+	// 		// 	result.WriteString(msg)
+	// 		// }
+	// 	}
+	// }
 
-	result["gacha"] = tempResult
+	// result["gacha"] = tempResult
 
 	return result
 }
