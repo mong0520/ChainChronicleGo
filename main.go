@@ -126,14 +126,15 @@ func start() {
 	}
 
 	metadata.Config = config
-	dailInfo := &mgo.DialInfo{
-		Addrs:    []string{"ds141198.mlab.com:41198"},
-		Timeout:  time.Second * 1,
-		Database: "heroku_rt8rcrds",
-		Username: "ccadmin",
-		Password: "gundam0079",
-	}
-	if db, err := mgo.DialWithInfo(dailInfo); err != nil {
+	// dailInfo := &mgo.DialInfo{
+	// 	Addrs:    []string{"ds141198.mlab.com:41198"},
+	// 	Timeout:  time.Second * 1,
+	// 	Database: "heroku_rt8rcrds",
+	// 	Username: "ccadmin",
+	// 	Password: "gundam0079",
+	// }
+	// if db, err := mgo.DialWithInfo(dailInfo); err != nil {
+	if db, err := mgo.Dial("localhost:27017"); err != nil {
 		logger.Error("Unable to connect DB", err)
 	} else {
 		metadata.DB = db
