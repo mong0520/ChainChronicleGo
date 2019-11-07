@@ -94,14 +94,14 @@ func UpdateDB(metadata *clients.Metadata) {
 		for _, field := range fields {
 			fmt.Println("Updating collection", field)
 			dataList, _ := dyno.GetSlice(ret, field)
-			session.DB("cc").C(field).DropCollection()
+			session.DB("heroku_rt8rcrds").C(field).DropCollection()
 
 			for idx, data := range dataList {
 				tmpEnt := models.GetStruct(field)
 				switch reflect.TypeOf(data).Kind() {
 				case reflect.Map:
 					utils.Map2Struct(data.(map[string]interface{}), tmpEnt)
-					session.DB("cc").C(field).Insert(&tmpEnt)
+					session.DB("heroku_rt8rcrds").C(field).Insert(&tmpEnt)
 
 				case reflect.Slice:
 					for _, item := range data.([]interface{}) {
@@ -110,10 +110,10 @@ func UpdateDB(metadata *clients.Metadata) {
 							utils.Map2Struct(item.(map[string]interface{}), tmpEnt)
 							questInfo := tmpEnt.(*models.QuestDigest)
 							questInfo.QuestType = idx
-							session.DB("cc").C(field).Insert(&questInfo)
+							session.DB("heroku_rt8rcrds").C(field).Insert(&questInfo)
 						} else {
 							utils.Map2Struct(item.(map[string]interface{}), tmpEnt)
-							session.DB("cc").C(field).Insert(&tmpEnt)
+							session.DB("heroku_rt8rcrds").C(field).Insert(&tmpEnt)
 						}
 
 						// utils.Map2Struct(item.(map[string]interface{}), tmpEnt)

@@ -3,11 +3,9 @@ package main
 import (
 	"encoding/json"
 	"log"
-	"net/http"
 	"strings"
 
 	"github.com/line/line-bot-sdk-go/linebot"
-	"github.com/mong0520/ChainChronicleGo/ccfsm"
 	"github.com/mong0520/ChainChronicleGo/clients"
 	"github.com/mong0520/ChainChronicleGo/clients/item"
 	"github.com/mong0520/ChainChronicleGo/clients/quest"
@@ -17,8 +15,6 @@ import (
 	"github.com/mong0520/ChainChronicleGo/clients/uzu"
 	"github.com/mong0520/ChainChronicleGo/models"
 	"github.com/mong0520/ChainChronicleGo/utils"
-
-	"github.com/gomodule/redigo/redis"
 
 	"fmt"
 	"os"
@@ -130,19 +126,25 @@ func start() {
 	}
 
 	metadata.Config = config
-
-	if db, err := mgo.Dial("localhost:27017"); err != nil {
+	dailInfo := &mgo.DialInfo{
+		Addrs:    []string{"ds141198.mlab.com:41198"},
+		Timeout:  time.Second * 1,
+		Database: "heroku_rt8rcrds",
+		Username: "ccadmin",
+		Password: "gundam0079",
+	}
+	if db, err := mgo.DialWithInfo(dailInfo); err != nil {
 		logger.Error("Unable to connect DB", err)
 	} else {
 		metadata.DB = db
 	}
 
-	c, err := redis.Dial("tcp", ":6379")
-	if err != nil {
-		logger.Fatal(err)
-	}
-	metadata.RedisConn = c
-	defer c.Close()
+	// c, err := redis.Dial("tcp", ":6379")
+	// if err != nil {
+	// 	logger.Fatal(err)
+	// }
+	// metadata.RedisConn = c
+	// defer c.Close()
 
 	//utils.DumpConfig(metadata.Config)
 	uid, _ := metadata.Config.String("GENERAL", "Uid")
@@ -181,7 +183,7 @@ func start() {
 	//dumpUser(metadata)
 	if options.Mode == "d" {
 		fmt.Println("Start daemon mode...")
-		InitLineBot(metadata)
+		// InitLineBot(metadata)
 	}
 	flowLoop, _ := metadata.Config.Int("GENERAL", "FlowLoop")
 	sleepDuration, err := metadata.Config.Int("GENERAL", "FlowLoopDelay")
@@ -1505,219 +1507,219 @@ func dumpUser(u *clients.Metadata) {
 	logger.Infof("%+v\n", *u)
 }
 
-func InitLineBot(m *clients.Metadata) {
-	var err error
-	metadata = m
-	secret := os.Getenv("LINE_SECRET")
-	token := os.Getenv("LINE_TOKEN")
-	SSLCertPath := os.Getenv("SSL_CERT_PATH")
-	SSLPrivateKeyPath := os.Getenv("SSL_PRIVATE_KEY_PATH")
-	bot, err = linebot.New(secret, token)
-	if err != nil {
-		log.Println(err)
-	}
-	//log.Println("Bot:", bot, " err:", err)
-	http.HandleFunc("/callback", callbackHandler)
-	// port := os.Getenv("PORT")
-	port := "8443"
-	addr := fmt.Sprintf(":%s", port)
-	runMode := os.Getenv("MODE")
-	log.Printf("Run Mode = %s\n", runMode)
-	if strings.ToLower(runMode) == ModeHttps {
-		log.Printf("Secure listen on %s with \n", addr)
-		err := http.ListenAndServeTLS(addr, SSLCertPath, SSLPrivateKeyPath, nil)
-		if err != nil {
-			log.Panic(err)
-		}
-	} else {
-		log.Printf("Listen on %s\n", addr)
-		err := http.ListenAndServe(addr, nil)
-		if err != nil {
-			log.Panic(err)
-		}
-	}
+// func InitLineBot(m *clients.Metadata) {
+// 	var err error
+// 	metadata = m
+// 	secret := os.Getenv("LINE_SECRET")
+// 	token := os.Getenv("LINE_TOKEN")
+// 	SSLCertPath := os.Getenv("SSL_CERT_PATH")
+// 	SSLPrivateKeyPath := os.Getenv("SSL_PRIVATE_KEY_PATH")
+// 	bot, err = linebot.New(secret, token)
+// 	if err != nil {
+// 		log.Println(err)
+// 	}
+// 	//log.Println("Bot:", bot, " err:", err)
+// 	http.HandleFunc("/callback", callbackHandler)
+// 	// port := os.Getenv("PORT")
+// 	port := "8443"
+// 	addr := fmt.Sprintf(":%s", port)
+// 	runMode := os.Getenv("MODE")
+// 	log.Printf("Run Mode = %s\n", runMode)
+// 	if strings.ToLower(runMode) == ModeHttps {
+// 		log.Printf("Secure listen on %s with \n", addr)
+// 		err := http.ListenAndServeTLS(addr, SSLCertPath, SSLPrivateKeyPath, nil)
+// 		if err != nil {
+// 			log.Panic(err)
+// 		}
+// 	} else {
+// 		log.Printf("Listen on %s\n", addr)
+// 		err := http.ListenAndServe(addr, nil)
+// 		if err != nil {
+// 			log.Panic(err)
+// 		}
+// 	}
 
-}
+// }
 
-func callbackHandler(w http.ResponseWriter, r *http.Request) {
-	events, err := bot.ParseRequest(r)
+// func callbackHandler(w http.ResponseWriter, r *http.Request) {
+// 	events, err := bot.ParseRequest(r)
 
-	if err != nil {
-		if err == linebot.ErrInvalidSignature {
-			w.WriteHeader(400)
-		} else {
-			w.WriteHeader(500)
-		}
-		return
-	}
+// 	if err != nil {
+// 		if err == linebot.ErrInvalidSignature {
+// 			w.WriteHeader(400)
+// 		} else {
+// 			w.WriteHeader(500)
+// 		}
+// 		return
+// 	}
 
-	for _, event := range events {
-		if event.Type == linebot.EventTypeMessage {
+// 	for _, event := range events {
+// 		if event.Type == linebot.EventTypeMessage {
 
-			switch message := event.Message.(type) {
-			case *linebot.TextMessage:
-				logger.Debugf("Text = ", message.Text)
-				textHander(event, message.Text)
-			default:
-				logger.Debug("Unimplemented handler for event type ", event.Type)
-			}
-		} else if event.Type == linebot.EventTypePostback {
-			logger.Debug("got a postback event")
-			logger.Debug(event.Postback.Data)
-			postbackHandler(event)
+// 			switch message := event.Message.(type) {
+// 			case *linebot.TextMessage:
+// 				logger.Debugf("Text = ", message.Text)
+// 				textHander(event, message.Text)
+// 			default:
+// 				logger.Debug("Unimplemented handler for event type ", event.Type)
+// 			}
+// 		} else if event.Type == linebot.EventTypePostback {
+// 			logger.Debug("got a postback event")
+// 			logger.Debug(event.Postback.Data)
+// 			postbackHandler(event)
 
-		} else {
-			logger.Debugf("got a %s event\n", event.Type)
-		}
-	}
-}
+// 		} else {
+// 			logger.Debugf("got a %s event\n", event.Type)
+// 		}
+// 	}
+// }
 
-func textHander(event *linebot.Event, message string) {
-	// force login again
-	sid, err := session.Login(metadata.Uid, metadata.Token, false)
-	if err != nil {
-		logger.Error(err)
-	}
+// func textHander(event *linebot.Event, message string) {
+// 	// force login again
+// 	sid, err := session.Login(metadata.Uid, metadata.Token, false)
+// 	if err != nil {
+// 		logger.Error(err)
+// 	}
 
-	metadata.Sid = sid
-	dispatchAction(event, message)
-	// sendTextMessage(event, metadata.Sid)
-}
+// 	metadata.Sid = sid
+// 	dispatchAction(event, message)
+// 	// sendTextMessage(event, metadata.Sid)
+// }
 
-func dispatchAction(event *linebot.Event, action string) {
-	currentState, err := redis.String(metadata.RedisConn.Do("GET", event.Source.UserID+":state"))
-	if err != nil || currentState == "" {
-		currentState = ccfsm.READY
-	}
-	logger.Debugf("Action = %s", action)
-	logger.Debugf("current state = %s", currentState)
-	lineReplyMessage = currentState
+// func dispatchAction(event *linebot.Event, action string) {
+// 	currentState, err := redis.String(metadata.RedisConn.Do("GET", event.Source.UserID+":state"))
+// 	if err != nil || currentState == "" {
+// 		currentState = ccfsm.READY
+// 	}
+// 	logger.Debugf("Action = %s", action)
+// 	logger.Debugf("current state = %s", currentState)
+// 	lineReplyMessage = currentState
 
-	if action == "reset" {
-		lineReplyMessage = "重設對話狀態完成"
-		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.READY)
-	} else if currentState == ccfsm.READY && action == "quest" {
-		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.QUEST_SELECT_NAME)
-		lineReplyMessage = "請輸入關卡 ID (可用 quest query 查詢)"
-	} else if currentState == ccfsm.QUEST_SELECT_NAME {
-		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.QUEST_SELECT_COUNT)
-		metadata.Config.RemoveOption("QUEST_LINE", "QuestIds")
-		metadata.Config.AddOption("QUEST_LINE", "QuestIds", action)
-		// Next hint
-		lineReplyMessage = "請輸入次數"
-	} else if currentState == ccfsm.QUEST_SELECT_COUNT {
-		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.READY)
-		metadata.Config.RemoveOption("QUEST_LINE", "Count")
-		metadata.Config.AddOption("QUEST_LINE", "Count", action)
-		// Try v2
-		for qType := 1; qType <= 8; qType++ {
-			logger.Debug("Trying to use type ", qType)
-			metadata.Config.RemoveOption("QUEST_LINE", "Type")
-			metadata.Config.AddOption("QUEST_LINE", "Type", strconv.Itoa(qType))
-			doQuest(metadata, "QUEST_LINE")
-		}
+// 	if action == "reset" {
+// 		lineReplyMessage = "重設對話狀態完成"
+// 		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.READY)
+// 	} else if currentState == ccfsm.READY && action == "quest" {
+// 		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.QUEST_SELECT_NAME)
+// 		lineReplyMessage = "請輸入關卡 ID (可用 quest query 查詢)"
+// 	} else if currentState == ccfsm.QUEST_SELECT_NAME {
+// 		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.QUEST_SELECT_COUNT)
+// 		metadata.Config.RemoveOption("QUEST_LINE", "QuestIds")
+// 		metadata.Config.AddOption("QUEST_LINE", "QuestIds", action)
+// 		// Next hint
+// 		lineReplyMessage = "請輸入次數"
+// 	} else if currentState == ccfsm.QUEST_SELECT_COUNT {
+// 		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.READY)
+// 		metadata.Config.RemoveOption("QUEST_LINE", "Count")
+// 		metadata.Config.AddOption("QUEST_LINE", "Count", action)
+// 		// Try v2
+// 		for qType := 1; qType <= 8; qType++ {
+// 			logger.Debug("Trying to use type ", qType)
+// 			metadata.Config.RemoveOption("QUEST_LINE", "Type")
+// 			metadata.Config.AddOption("QUEST_LINE", "Type", strconv.Itoa(qType))
+// 			doQuest(metadata, "QUEST_LINE")
+// 		}
 
-		// Try v3
-		metadata.Config.RemoveOption("QUEST_LINE", "Version")
-		metadata.Config.AddOption("QUEST_LINE", "Version", strconv.Itoa(3))
-		for qType := 1; qType <= 8; qType++ {
-			logger.Debug("Trying to use type ", qType)
-			metadata.Config.RemoveOption("QUEST_LINE", "Type")
-			metadata.Config.AddOption("QUEST_LINE", "Type", strconv.Itoa(qType))
-			doQuest(metadata, "QUEST_LINE")
-		}
+// 		// Try v3
+// 		metadata.Config.RemoveOption("QUEST_LINE", "Version")
+// 		metadata.Config.AddOption("QUEST_LINE", "Version", strconv.Itoa(3))
+// 		for qType := 1; qType <= 8; qType++ {
+// 			logger.Debug("Trying to use type ", qType)
+// 			metadata.Config.RemoveOption("QUEST_LINE", "Type")
+// 			metadata.Config.AddOption("QUEST_LINE", "Type", strconv.Itoa(qType))
+// 			doQuest(metadata, "QUEST_LINE")
+// 		}
 
-		lineReplyMessage = "完成 (不一定成功，log 尚未取出)"
-	} else if currentState == ccfsm.READY && action == "show uzu" {
-		doShowUZU(metadata, "")
-	} else if currentState == ccfsm.READY && action == "uzu" {
-		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.UZU_SELECT_ID)
-		lineReplyMessage = "請輸入魔神ID與層數 (格式=id,stage)，層數從 1 開始"
-	} else if currentState == ccfsm.UZU_SELECT_ID {
-		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.READY)
-		actions := strings.Split(action, ",")
-		if len(actions) != 2 {
-			lineReplyMessage = "格式錯誤"
-		} else {
-			uzuData, _ := uzu.GetUzuInfo(metadata.Sid)
-			currentScheduleID := uzuData.GetCurrentScheduleID(uzuData.Uzu[0].UzuID)
-			metadata.Config.RemoveOption("UZU", "uzid")
-			metadata.Config.AddOption("UZU", "uzid", actions[0])
+// 		lineReplyMessage = "完成 (不一定成功，log 尚未取出)"
+// 	} else if currentState == ccfsm.READY && action == "show uzu" {
+// 		doShowUZU(metadata, "")
+// 	} else if currentState == ccfsm.READY && action == "uzu" {
+// 		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.UZU_SELECT_ID)
+// 		lineReplyMessage = "請輸入魔神ID與層數 (格式=id,stage)，層數從 1 開始"
+// 	} else if currentState == ccfsm.UZU_SELECT_ID {
+// 		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.READY)
+// 		actions := strings.Split(action, ",")
+// 		if len(actions) != 2 {
+// 			lineReplyMessage = "格式錯誤"
+// 		} else {
+// 			uzuData, _ := uzu.GetUzuInfo(metadata.Sid)
+// 			currentScheduleID := uzuData.GetCurrentScheduleID(uzuData.Uzu[0].UzuID)
+// 			metadata.Config.RemoveOption("UZU", "uzid")
+// 			metadata.Config.AddOption("UZU", "uzid", actions[0])
 
-			metadata.Config.RemoveOption("UZU", "scid")
-			metadata.Config.AddOption("UZU", "scid", strconv.Itoa(currentScheduleID))
-			// for idx := 1; idx <= 12; idx++ {
-			metadata.Config.RemoveOption("UZU", "st")
-			metadata.Config.AddOption("UZU", "st", actions[1])
-			doUzu(metadata, "UZU")
-			// }
-		}
+// 			metadata.Config.RemoveOption("UZU", "scid")
+// 			metadata.Config.AddOption("UZU", "scid", strconv.Itoa(currentScheduleID))
+// 			// for idx := 1; idx <= 12; idx++ {
+// 			metadata.Config.RemoveOption("UZU", "st")
+// 			metadata.Config.AddOption("UZU", "st", actions[1])
+// 			doUzu(metadata, "UZU")
+// 			// }
+// 		}
 
-	} else if currentState == ccfsm.READY && action == "quest query" {
-		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.QUEST_QUERY)
-		lineReplyMessage = "請輸入關卡名稱"
-	} else if currentState == ccfsm.QUEST_QUERY {
-		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.READY)
-		quest, err := controllers.GetQuestByName(metadata.DB, action)
-		if err != nil {
-			lineReplyMessage = err.Error()
-		} else {
-			lineReplyMessage = fmt.Sprintf("%s 的 ID 為 %d", action, quest.QuestID)
-		}
-	} else if currentState == ccfsm.READY && action == "gacha" {
-		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.GACHA_SELECT_POOL)
-		lineReplyMessage = "請輸入轉蛋池代號"
-	} else if currentState == ccfsm.READY && action == "tower" {
-		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.TOWER_SELECT_MAX)
-		lineReplyMessage = "請輸入年代塔之記最高樓層"
-	} else if currentState == ccfsm.TOWER_SELECT_MAX {
-		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.READY)
-		if err != nil {
-			lineReplyMessage = "無法取得年代塔之記 ID"
-		} else {
-			metadata.Config.RemoveOption("TOWER", "MaxFloor")
-			metadata.Config.AddOption("TOWER", "MaxFloor", action)
-			doTower(metadata, "TOWER")
-			lineReplyMessage = "完成"
-		}
-	} else if currentState == ccfsm.READY && action == "status" {
-		doStatus(metadata, "")
-	} else if currentState == ccfsm.GACHA_SELECT_POOL {
-		metadata.Config.RemoveOption("GACHA_EVENT", "Type")
-		metadata.Config.AddOption("GACHA_EVENT", "Type", action)
-		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.GACHA_SELECT_COUNT)
-		lineReplyMessage = "請輸入轉蛋的次數"
-	} else if currentState == ccfsm.GACHA_SELECT_COUNT {
-		pool, _ := metadata.Config.String("GACHA_EVENT", "Type")
-		lineReplyMessage = "開始在轉蛋池 " + pool + " 進行 " + action + " 連抽啦"
-		finalMessage := ""
-		gachaCount, _ := strconv.Atoi(action)
-		for i := 0; i < gachaCount; i++ {
-			doGacha(metadata, "GACHA_EVENT")
-			finalMessage = finalMessage + lineReplyMessage + "\r\n"
-			time.Sleep(2 * time.Second)
-		}
-		lineReplyMessage = finalMessage
-		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.READY)
-	} else {
-		lineReplyMessage = "我不知道你想做什麼"
-	}
-	sendTextMessage(event, lineReplyMessage)
-}
+// 	} else if currentState == ccfsm.READY && action == "quest query" {
+// 		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.QUEST_QUERY)
+// 		lineReplyMessage = "請輸入關卡名稱"
+// 	} else if currentState == ccfsm.QUEST_QUERY {
+// 		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.READY)
+// 		quest, err := controllers.GetQuestByName(metadata.DB, action)
+// 		if err != nil {
+// 			lineReplyMessage = err.Error()
+// 		} else {
+// 			lineReplyMessage = fmt.Sprintf("%s 的 ID 為 %d", action, quest.QuestID)
+// 		}
+// 	} else if currentState == ccfsm.READY && action == "gacha" {
+// 		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.GACHA_SELECT_POOL)
+// 		lineReplyMessage = "請輸入轉蛋池代號"
+// 	} else if currentState == ccfsm.READY && action == "tower" {
+// 		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.TOWER_SELECT_MAX)
+// 		lineReplyMessage = "請輸入年代塔之記最高樓層"
+// 	} else if currentState == ccfsm.TOWER_SELECT_MAX {
+// 		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.READY)
+// 		if err != nil {
+// 			lineReplyMessage = "無法取得年代塔之記 ID"
+// 		} else {
+// 			metadata.Config.RemoveOption("TOWER", "MaxFloor")
+// 			metadata.Config.AddOption("TOWER", "MaxFloor", action)
+// 			doTower(metadata, "TOWER")
+// 			lineReplyMessage = "完成"
+// 		}
+// 	} else if currentState == ccfsm.READY && action == "status" {
+// 		doStatus(metadata, "")
+// 	} else if currentState == ccfsm.GACHA_SELECT_POOL {
+// 		metadata.Config.RemoveOption("GACHA_EVENT", "Type")
+// 		metadata.Config.AddOption("GACHA_EVENT", "Type", action)
+// 		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.GACHA_SELECT_COUNT)
+// 		lineReplyMessage = "請輸入轉蛋的次數"
+// 	} else if currentState == ccfsm.GACHA_SELECT_COUNT {
+// 		pool, _ := metadata.Config.String("GACHA_EVENT", "Type")
+// 		lineReplyMessage = "開始在轉蛋池 " + pool + " 進行 " + action + " 連抽啦"
+// 		finalMessage := ""
+// 		gachaCount, _ := strconv.Atoi(action)
+// 		for i := 0; i < gachaCount; i++ {
+// 			doGacha(metadata, "GACHA_EVENT")
+// 			finalMessage = finalMessage + lineReplyMessage + "\r\n"
+// 			time.Sleep(2 * time.Second)
+// 		}
+// 		lineReplyMessage = finalMessage
+// 		metadata.RedisConn.Do("SET", event.Source.UserID+":state", ccfsm.READY)
+// 	} else {
+// 		lineReplyMessage = "我不知道你想做什麼"
+// 	}
+// 	sendTextMessage(event, lineReplyMessage)
+// }
 
-func postbackHandler(event *linebot.Event) {
-	sendTextMessage(event, "got postback message")
-}
+// func postbackHandler(event *linebot.Event) {
+// 	sendTextMessage(event, "got postback message")
+// }
 
-func sendTextMessage(event *linebot.Event, text string) {
-	if _, err := bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(text)).Do(); err != nil {
-		log.Println(err)
-	}
-}
+// func sendTextMessage(event *linebot.Event, text string) {
+// 	if _, err := bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(text)).Do(); err != nil {
+// 		log.Println(err)
+// 	}
+// }
 
-// Not supported
-func pushTextMessage(uid string, text string) {
-	if _, err := bot.PushMessage(uid, linebot.NewTextMessage(text)).Do(); err != nil {
-		log.Println(err)
-	}
-}
+// // Not supported
+// func pushTextMessage(uid string, text string) {
+// 	if _, err := bot.PushMessage(uid, linebot.NewTextMessage(text)).Do(); err != nil {
+// 		log.Println(err)
+// 	}
+// }
