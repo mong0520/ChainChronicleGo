@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -323,4 +324,60 @@ func InArray(val interface{}, array interface{}) (exists bool) {
 		}
 	}
 	return
+}
+
+func DecodeRotData(from []byte) []byte {
+	num := int(from[0])
+	tmpVal := 0
+	if num == 0 {
+		tmpVal = 4
+	} else {
+		tmpVal = num
+	}
+
+	num2 := len(from) - (4 + (4 - tmpVal))
+	buffer := make([]byte, num2)
+	v18 := int(from[0])
+	v4 := num2 / 4
+
+	if int(from[0]) == 0 {
+		v4--
+		v18 = 4
+	}
+	v6 := int(from[1])
+	v7 := int(from[2])
+	v9 := 0
+	v10 := 0
+	for v8 := 0; v8 <= v4; v8++ {
+		v13 := make([]byte, 4)
+		v13[0] = from[v9+7]
+		v13[1] = from[v9+6]
+		v13[2] = from[v9+5]
+		v13[3] = from[v9+4]
+
+		// to be test
+		v14 := binary.LittleEndian.Uint32(v13)
+
+		// int ror = 32 - (v8 + v6) % v7;
+		ror := uint32(32 - (v8+v6)%v7)
+		v14 = (v14 >> ror) | (v14 << (32 - ror))
+		v15 := GetBytes(v14)
+		v16 := 4
+
+		if v8 == v4 {
+			v16 = v18
+		}
+		for i := v16 - 1; i >= 0; i-- {
+			buffer[v10] = v15[i]
+			v10++
+		}
+		v9 += 4
+	}
+	return buffer
+}
+
+func GetBytes(x uint32) []byte {
+	bytesBuffer := bytes.NewBuffer([]byte{})
+	binary.Write(bytesBuffer, binary.LittleEndian, x)
+	return bytesBuffer.Bytes()
 }

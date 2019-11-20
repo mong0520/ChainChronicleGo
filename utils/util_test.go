@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"io/ioutil"
 	"testing"
 )
 
@@ -43,6 +44,16 @@ func TestSimpePost(t *testing.T) {
 			t.Log(resp)
 		})
 	}
+}
+
+func TestDecodeRotData(t *testing.T) {
+	dat, err := ioutil.ReadFile("cha_2d_card_00017.scr")
+	if err != nil {
+		t.Error(err)
+	}
+
+	output := DecodeRotData(dat)
+	ioutil.WriteFile("output.jpg", output, 0644)
 }
 
 // func TestPostV2(t *testing.T) {
