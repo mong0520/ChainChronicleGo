@@ -141,6 +141,7 @@ func start() {
 		}
 
 		dailInfo.Addrs = []string{dbHostPort}
+		dailInfo.Timeout = time.Second * 1
 		dailInfo.Database, err = globalConfig.String("DB", "db")
 		if err != nil {
 			logger.Error(err)
@@ -156,8 +157,7 @@ func start() {
 			logger.Error(err)
 		}
 	}
-	dailInfo.Timeout = time.Second * 1
-	logger.Debugf("%+v", dailInfo)
+
 	if db, err := mgo.DialWithInfo(dailInfo); err != nil {
 		// if db, err := mgo.Dial("localhost:27017"); err != nil {
 		logger.Error("Unable to connect DB", err)
