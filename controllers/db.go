@@ -5,7 +5,6 @@ import (
 	"reflect"
 
 	"github.com/icza/dyno"
-	"github.com/mong0520/ChainChronicleGo/clients"
 	"github.com/mong0520/ChainChronicleGo/clients/general"
 	"github.com/mong0520/ChainChronicleGo/models"
 	"github.com/mong0520/ChainChronicleGo/utils"
@@ -76,8 +75,7 @@ func GetQuestsByName(session *mgo.Session, name string, selector *bson.M) ([]mod
 //    }
 //}
 
-func UpdateDB(metadata *clients.Metadata) {
-	session := metadata.DB
+func UpdateDB(session *mgo.Session) error {
 	apiMapping := map[string][]string{
 		"data/questdigest": {"questdigest"},
 		"data/charainfo":   {"charainfo", "chararein"},
@@ -87,42 +85,43 @@ func UpdateDB(metadata *clients.Metadata) {
 	for api, fields := range apiMapping {
 		fmt.Println("### Updating DB from...", api)
 		param := map[string]interface{}{}
-		ret, _ := general.GeneralAction(api, metadata.Sid, param)
-		//fmt.Println(utils.Map2JsonString(ret))
-		//break
-		//fields = []string{"charainfo", "chararein"}
+		ret, _ := general.GeneralAction(api, "dummy_sid", param)
 		for _, field := range fields {
 			fmt.Println("Updating collection", field)
 			dataList, _ := dyno.GetSlice(ret, field)
 			session.DB("cc").C(field).DropCollection()
 
+			entities := []interface{}{}
 			for idx, data := range dataList {
 				tmpEnt := models.GetStruct(field)
 				switch reflect.TypeOf(data).Kind() {
 				case reflect.Map:
-					utils.Map2Struct(data.(map[string]interface{}), tmpEnt)
-					session.DB("cc").C(field).Insert(&tmpEnt)
+					utils.Map2Struct(data.(map[string]interface{}), &tmpEnt)
+					entities = append(entities, tmpEnt)
+					// session.DB("cc").C(field).Insert(&tmpEnt)
 
 				case reflect.Slice:
 					for _, item := range data.([]interface{}) {
 						// // ad-hoc logic to set quest type
 						if field == "questdigest" {
-							utils.Map2Struct(item.(map[string]interface{}), tmpEnt)
-							questInfo := tmpEnt.(*models.QuestDigest)
+							questInfo := models.QuestDigest{}
+							utils.Map2Struct(item.(map[string]interface{}), &questInfo)
 							questInfo.QuestType = idx
-							session.DB("cc").C(field).Insert(&questInfo)
+							entities = append(entities, questInfo)
 						} else {
-							utils.Map2Struct(item.(map[string]interface{}), tmpEnt)
-							session.DB("cc").C(field).Insert(&tmpEnt)
+							utils.Map2Struct(item.(map[string]interface{}), &tmpEnt)
+							entities = append(entities, tmpEnt)
 						}
-
-						// utils.Map2Struct(item.(map[string]interface{}), tmpEnt)
-						// session.DB("cc").C(field).Insert(&tmpEnt)
-
 					}
 				}
-
+			}
+			err := session.DB("cc").C(field).Insert(entities...)
+			entities = nil
+			if err != nil {
+				return err
 			}
 		}
 	}
+
+	return nil
 }

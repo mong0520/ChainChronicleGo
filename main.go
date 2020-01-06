@@ -48,11 +48,12 @@ const (
 )
 
 type Options struct {
-	ConfigPath string `short:"c" long:"config" description:"Config path" required:"true"`
-	Action     string `short:"a" long:"action" description:"Action to run" required:"false"`
-	Repeat     int    `short:"r" long:"repeat" description:"Repeat action for r times" required:"false"`
-	Timeout    int    `short:"t" long:"timeout" description:"Timeout in seconds between repeat" required:"false"`
-	Mode       string `short:"m" long:"mode" description:"Chatbot mode or cli mode" required:"false" default:"cli"`
+	ConfigPath       string `short:"c" long:"config" description:"Config path" required:"true"`
+	GlobalConfigPath string `short:"g" long:"global" description:"global config path" required:"false"`
+	Action           string `short:"a" long:"action" description:"Action to run" required:"false"`
+	Repeat           int    `short:"r" long:"repeat" description:"Repeat action for r times" required:"false"`
+	Timeout          int    `short:"t" long:"timeout" description:"Timeout in seconds between repeat" required:"false"`
+	Mode             string `short:"m" long:"mode" description:"Chatbot mode or cli mode" required:"false" default:"cli"`
 }
 
 var bot *linebot.Client
@@ -119,6 +120,12 @@ func start() {
 	}
 	logger = utils.GetLoggerEx(logFile)
 
+	globalConfig, err := config.ReadDefault("conf/global.conf")
+	if err != nil {
+		logger.Error("Unable to read config, ", err)
+		return
+	}
+
 	config, err := config.ReadDefault(options.ConfigPath)
 	if err != nil {
 		logger.Error("Unable to read config, ", err)
@@ -126,15 +133,33 @@ func start() {
 	}
 
 	metadata.Config = config
-	// dailInfo := &mgo.DialInfo{
-	// 	Addrs:    []string{"ds141198.mlab.com:41198"},
-	// 	Timeout:  time.Second * 1,
-	// 	Database: "heroku_rt8rcrds",
-	// 	Username: "ccadmin",
-	// 	Password: "gundam0079",
-	// }
-	// if db, err := mgo.DialWithInfo(dailInfo); err != nil {
-	if db, err := mgo.Dial("localhost:27017"); err != nil {
+	dailInfo := &mgo.DialInfo{}
+	if globalConfig.HasSection("DB") {
+		dbHostPort, err := globalConfig.String("DB", "host")
+		if err != nil {
+			logger.Error(err)
+		}
+
+		dailInfo.Addrs = []string{dbHostPort}
+		dailInfo.Database, err = globalConfig.String("DB", "db")
+		if err != nil {
+			logger.Error(err)
+		}
+
+		dailInfo.Username, err = globalConfig.String("DB", "user")
+		if err != nil {
+			logger.Error(err)
+		}
+
+		dailInfo.Password, err = globalConfig.String("DB", "password")
+		if err != nil {
+			logger.Error(err)
+		}
+	}
+	dailInfo.Timeout = time.Second * 1
+	logger.Debugf("%+v", dailInfo)
+	if db, err := mgo.DialWithInfo(dailInfo); err != nil {
+		// if db, err := mgo.Dial("localhost:27017"); err != nil {
 		logger.Error("Unable to connect DB", err)
 	} else {
 		metadata.DB = db
@@ -842,7 +867,7 @@ func doDebug(metadata *clients.Metadata, section string) {
 }
 
 func doUpdateDB(metadata *clients.Metadata, section string) {
-	controllers.UpdateDB(metadata)
+	controllers.UpdateDB(metadata.DB)
 }
 
 func getPresents(metadata *clients.Metadata, excludeTypes []string) {

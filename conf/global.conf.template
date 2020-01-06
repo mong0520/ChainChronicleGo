@@ -1,0 +1,5 @@
+[DB]
+host = localhost:27017
+db = 
+user = 
+password = 

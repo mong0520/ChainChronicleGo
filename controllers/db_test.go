@@ -44,5 +44,12 @@ func TestGetQuestsByName(t *testing.T) {
 			t.Log(q)
 		}
 	}
+}
 
+func TestUpdateDB(t *testing.T) {
+	db, _ := mgo.Dial("localhost:27017")
+	err := UpdateDB(db)
+	if err != nil {
+		t.Error(err)
+	}
 }

@@ -3,13 +3,13 @@ package models
 //for mongodb
 
 var mapping = map[string]interface{}{
-	"reinforce":   &Reinforce{},
-	"evolve":      &Evolve{},
-	"weaponlist":  &Weapon{},
-	"charainfo":   &Charainfo{},
-	"chararein":   &Chararein{},
-	"questdigest": &QuestDigest{},
-	"skilllist":   &Skilllist{},
+	"reinforce":   Reinforce{},
+	"evolve":      Evolve{},
+	"weaponlist":  Weapon{},
+	"charainfo":   Charainfo{},
+	"chararein":   Chararein{},
+	"questdigest": QuestDigest{},
+	"skilllist":   Skilllist{},
 }
 
 type Charainfo struct {
@@ -571,20 +571,11 @@ func (g GachaResultItem) dummy() int {
 }
 
 func GetStruct(s string) (m interface{}) {
-	//mapping := map[string]interface{}{
-	//    "reinforce": &Reinforce{},
-	//    "evolve": &Evolve{},
-	//    "weaponlist": &Weapon{},
-	//    "charainfo": &Charainfo{},
-	//    "chararein": &Chararein{},
-	//    "questdigest": &QuestDigest{},
-	//    "skilllist": &Skilllist{},
-	//}
 	if _, ok := mapping[s]; ok {
 		return mapping[s]
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 type Book struct {
