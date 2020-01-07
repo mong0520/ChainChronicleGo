@@ -141,7 +141,7 @@ func start() {
 		}
 
 		dailInfo.Addrs = []string{dbHostPort}
-		dailInfo.Timeout = time.Second * 1
+		// dailInfo.Timeout = time.Second * 1
 		dailInfo.Database, err = globalConfig.String("DB", "db")
 		if err != nil {
 			logger.Error(err)

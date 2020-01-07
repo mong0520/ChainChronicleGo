@@ -118,6 +118,7 @@ func UpdateDB(session *mgo.Session) error {
 			err := session.DB("cc").C(field).Insert(entities...)
 			entities = nil
 			if err != nil {
+				fmt.Println(err)
 				return err
 			}
 		}
