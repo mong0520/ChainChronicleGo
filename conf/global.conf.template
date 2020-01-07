@@ -1,5 +1,2 @@
 [DB]
-host = localhost:27017
-db = 
-user = 
-password = 
+uri = mongodb://user:password@cluster0-shard-00-00-YOUR-ID.mongodb.net:27017,cluster0-shard-00-01-YOUR-ID.mongodb.net:27017,cluster0-shard-00-02-YOUR-ID.mongodb.net:27017/cc?replicaSet=Cluster0-shard-0&authSource=admin

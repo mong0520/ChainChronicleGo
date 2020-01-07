@@ -1,8 +1,10 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"log"
+	"net"
 	"strings"
 
 	"github.com/line/line-bot-sdk-go/linebot"
@@ -133,36 +135,35 @@ func start() {
 	}
 
 	metadata.Config = config
-	dailInfo := &mgo.DialInfo{}
+	dialInfo := &mgo.DialInfo{}
 	if globalConfig.HasSection("DB") {
-		dbHostPort, err := globalConfig.String("DB", "host")
+		logger.Debug("MongoDB is connected by global config")
+		dbURI, err := globalConfig.String("DB", "uri")
 		if err != nil {
 			logger.Error(err)
 		}
 
-		dailInfo.Addrs = []string{dbHostPort}
-		// dailInfo.Timeout = time.Second * 1
-		dailInfo.Database, err = globalConfig.String("DB", "db")
-		if err != nil {
-			logger.Error(err)
-		}
+		dialInfo, _ = mgo.ParseURL(dbURI)
 
-		dailInfo.Username, err = globalConfig.String("DB", "user")
-		if err != nil {
-			logger.Error(err)
+		tlsConfig := &tls.Config{}
+		dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
+			conn, err := tls.Dial("tcp", addr.String(), tlsConfig)
+			return conn, err
 		}
-
-		dailInfo.Password, err = globalConfig.String("DB", "password")
-		if err != nil {
-			logger.Error(err)
+		if db, err := mgo.DialWithInfo(dialInfo); err != nil {
+			logger.Error("Unable to connect DB", err)
+			logger.Debug(dialInfo)
+		} else {
+			metadata.DB = db
 		}
-	}
-
-	if db, err := mgo.DialWithInfo(dailInfo); err != nil {
-		// if db, err := mgo.Dial("localhost:27017"); err != nil {
-		logger.Error("Unable to connect DB", err)
 	} else {
-		metadata.DB = db
+		logger.Debug("MongoDB is connected to localhost")
+		//connect to localhost without username/password
+		if db, err := mgo.Dial("localhost:27017"); err != nil {
+			logger.Error("Unable to connect DB", err)
+		} else {
+			metadata.DB = db
+		}
 	}
 
 	// c, err := redis.Dial("tcp", ":6379")
